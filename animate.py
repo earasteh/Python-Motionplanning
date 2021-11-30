@@ -26,7 +26,7 @@ class Path:
     def __init__(self):
 
         # Get path to waypoints.csv
-        dir_path = 'data/waypoints.csv'
+        dir_path = 'data/waypoints2.csv'
         df = pd.read_csv(dir_path)
 
         x = df['X-axis'].values
@@ -97,8 +97,7 @@ def main():
     ax = plt.axes()
     ax.set_aspect('equal')
 
-    road = plt.Circle((0, 0), 50, color='gray', fill=False, linewidth=30)
-    ax.add_patch(road)
+    # road = plt.Polygon((0, 0), 50, color='gray', fill=False, linewidth=30)
     ax.plot(path.px, path.py, '--', color='gold')
 
     annotation = ax.annotate(f'{car.x:.1f}, {car.y:.1f}', xy=(car.x, car.y + 5), color='black', annotation_clip=False)
