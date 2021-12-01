@@ -6,7 +6,19 @@
 <div align="center">
 	<img src="resources/animation.gif" />
 </div>
-   
+
+
+This project is forked from https://github.com/winstxnhdw/KinematicBicycleModel .
+
+Added features:
+- A 7 DoF vehicle model with Pacejka magic tire formula
+
+To Do:
+- Motion planning features
+  - Conformal Lattice Planner
+  - RRT*
+
+
 ## Abstract
 
 A python library for the Kinematic Bicycle model. The Kinematic Bicycle is a compromise between the non-linear and linear bicycle models for high-speed integration of the library with little configuration.
