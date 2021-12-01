@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from numpy import cos, sin, tan, clip, abs, sqrt, arctan, pi
+from numpy import cos, sin, tan, clip, abs, sqrt, arctan, pi, array
 from libs.normalise_angle import normalise_angle
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
@@ -110,7 +110,7 @@ class vehicle_models:
     def __init__(self):
         p = VehicleParameters()  # parameters
 
-    def planar_model(self, t, state, tire_torques, mu_max, delta, p):
+    def planar_model(self, state, tire_torques, mu_max, delta, p):
         # Unpacking the state-space and inputs
         U, V, wz, wFL, wFR, wRL, wRR, yaw, x, y = state
         deltaFL, deltaFR, deltaRL, deltaRR = delta
@@ -307,8 +307,25 @@ class vehicle_models:
         axOut = axc
         ayOut = ayc
 
-        return state_dot
-        # return [state_dot, vx, vy, ax, ay]
+        return [state_dot, vx, vy, ax, ay]
+
+# Empty lists for global coordinates Vx, Vy, ax, and ay
+Vx = []
+Vy = []
+Ax = []
+Ay = []
+t_ = []
+
+def planar_integrate(t, state, tire_torques, mu_max, delta, p):
+    veh = vehicle_models()
+    [state_dot, vx, vy, ax, ay] = veh.planar_model(state, tire_torques, mu_max, delta, p)
+    Vx.append(vx)
+    Vy.append(vy)
+    Ax.append(ax)
+    Ay.append(ay)
+    t_.append(t)
+    return state_dot
+
 
 
 
@@ -324,7 +341,9 @@ def main():
     mu_max = [1, 1, 1, 1] # road surface maximum friction
     p1 = VehicleParameters()
 
-    sol = solve_ivp(veh.planar_model, [0, 10], state0, args=(tire_torques, mu_max, delta, p1), dense_output=True)
+    # planar_integrate(state0, 0, tire_torques, mu_max, delta, p1)
+
+    sol = solve_ivp(planar_integrate, [0, 10], state0, args=(tire_torques, mu_max, delta, p1), dense_output=True)
     t = sol.t
     U, V, wz, wFL, wFR, wRL, wRR, yaw, x, y = sol.y
 
@@ -339,7 +358,17 @@ def main():
     plt.xlabel('Time (Sec)')
     plt.ylabel('Yaw rate (rad/sec)')
     plt.plot(t, yaw)
+
+    plt.figure()
+    plt.title('Lateral Velocity')
+    plt.xlabel('Time (Sec)')
+    plt.ylabel('Velocity (m/sec)')
+    plt.plot(t_, Vy)
+
+
     plt.show()
+
+
 
 
 
