@@ -330,16 +330,16 @@ def planar_integrate(t, state, tire_torques, mu_max, delta, p):
 
 
 def main():
-    print("This script is not meant to be executable, and should be used as a library.")
-    veh = vehicle_models()
-            # U,V,wz,wFL,wFR,wRL,wRR,yaw,x,y
-    state0 = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-    ax_prev = 1
-    ay_prev = 1
-    tire_torques = [100, 100, 100, 100]
-    delta = [0, 0, 0, 0]
-    mu_max = [1, 1, 1, 1] # road surface maximum friction
+    # print("This script is not meant to be executable, and should be used as a library.")
     p1 = VehicleParameters()
+    U_init = 35
+    state0 = [U_init, 0, 0,  # U, V, wz
+              U_init/p1.rw, U_init/p1.rw, U_init/p1.rw, U_init/p1.rw, # wFL, wFR, wRL, wRR
+              0, 0, 0] # yaw, x, y
+    tire_torques = [1000, 1000, 1000, 1000]
+    delta = [0, 0, 10, 10]
+    mu_max = [1, 1, 1, 1] # road surface maximum friction
+
 
     # planar_integrate(state0, 0, tire_torques, mu_max, delta, p1)
 
