@@ -52,6 +52,9 @@ class Car:
         self.c_r = 0.01
         self.c_a = 2.0
 
+        self.state = [10, 0, 0, init_yaw, init_x, init_y]
+
+
         # Tracker parameters
         self.px = px
         self.py = py
@@ -77,9 +80,12 @@ class Car:
 
     def drive(self):
         
-        throttle = rand.uniform(150, 200)
+        # throttle = rand.uniform(1, 2)
+        throttle = 0
         self.delta, self.target_id, self.crosstrack_error = self.tracker.stanley_control(self.x, self.y, self.yaw, self.v, self.delta)
-        self.x, self.y, self.yaw, self.v, _, _ = self.kbm.kinematic_model(self.x, self.y, self.yaw, self.v, throttle, self.delta)
+        # self.x, self.y, self.yaw, self.v, _, _ = self.kbm.kinematic_model(self.state, self.y, self.yaw, self.v, throttle, self.delta)
+        # self.state = [5, 0, 0, init_yaw, init_x, init_y]
+        self.x, self.y, self.yaw, self.v, _, _, self.state = self.kbm.bicycle_model(self.state, self.delta, throttle)
 
         os.system('cls' if os.name=='nt' else 'clear')
         print(f"Cross-track term: {self.crosstrack_error}")

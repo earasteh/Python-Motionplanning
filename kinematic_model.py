@@ -1,8 +1,18 @@
 #!/usr/bin/env python
-from numpy import cos, sin, tan, clip, abs, sqrt, arctan, pi, array
+from numpy import cos, sin, tan, clip, abs, sqrt, arctan, pi, array, linspace
+import numpy as np
 from libs.normalise_angle import normalise_angle
 from scipy.integrate import solve_ivp
+from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
+
+
+# Empty lists for global coordinates Vx, Vy, ax, and ay
+Vx = []
+Vy = []
+Ax = []
+Ay = []
+t_ = []
 
 class KinematicBicycleModel:
 
@@ -58,6 +68,85 @@ class KinematicBicycleModel:
         yaw = normalise_angle(yaw)
 
         return x, y, yaw, velocity, delta, omega
+
+    def bicycle_model(self, state, delta, acceleration):
+        g = 9.81
+        M = 3600 * 0.453592
+        L = 7 * 0.3048
+        ratio = 0.85
+        b = L / (1 + ratio)
+        a = L - b
+        I = 0.5 * M * a * b
+        C_f = 350 * 4.48 * 180 / np.pi
+        K_U = 1.1
+        C_r = K_U * (a / b) * C_f
+        # N_f = M * g * b / L
+        # N_r = M * g * a / L
+        # mu_max = 0.85  # maximum friction coefficient
+        # C_x = 80000  # Longitudinal tire stiffness (N/rad)
+
+        # states unpack
+        U, V, r, theta, X, Y = state
+
+
+        alpha_f = delta - (V + a * r) / U
+        alpha_r = (-V + b * r) / U
+
+        ## Dugoff
+        # N_f = M * g * b / L
+        # N_r = M * g * a / L
+        #
+        # s_f = 0
+        # s_r = 0
+        #
+        # mu_f = 0.85
+        # mu_r = 0.85
+        #
+        # F_yfd = (C_f * tan(alpha_f)) / (1 - abs(s_f))
+        # F_yrd = (C_r * tan(alpha_r)) / (1 - abs(s_r))
+        # F_xfd = 0
+        # F_xrd = 0
+        #
+        # lamda_f = mu_f/ (2 * ((F_yfd / N_f) ** 2 + (F_xfd / N_f) ** 2) ** 0.5)
+        # lamda_r = mu_r/ (2 * ((F_yrd / N_r) ** 2 + (F_xrd / N_r) ** 2) ** 0.5)
+        #
+        # if lamda_f >= 1:
+        #     Y_f = F_yfd
+        # else:
+        #     Y_f = F_yfd * 2 * lamda_f * (1 - lamda_f / 2)
+        #
+        # if lamda_r >= 1:
+        #     Y_r = F_yrd
+        # else:
+        #     Y_r = F_yrd * 2 * lamda_r * (1 - lamda_r / 2)
+
+        # Linear tire
+        Y_f =  C_f * alpha_f
+        Y_r =  C_r * alpha_r
+
+        # Equations
+        U_dot = acceleration
+        V_dot = (Y_f + Y_r) / M - U * r
+        r_dot = (a * Y_f - b * Y_r) / I
+        theta_dot = r
+        X_dot = U * np.cos(theta) - V * np.sin(theta)
+        Y_dot = U * np.sin(theta) + V * np.cos(theta)
+
+        # Integration
+        U += U_dot * self.dt
+        V += V_dot * self.dt
+        r += r_dot * self.dt
+        theta += theta_dot * self.dt
+        X += X_dot * self.dt
+        Y += Y_dot * self.dt
+        yaw = normalise_angle(theta)
+
+        velocity = np.sqrt(U**2+V**2)
+
+        state_update = [U, V, r, theta, X, Y]
+
+        return X, Y, yaw, U, delta, theta_dot, state_update
+        # return [U_dot, V_dot, r_dot, theta_dot, X_dot, Y_dot]
 
 
 class VehicleParameters:
@@ -309,12 +398,12 @@ class vehicle_models:
 
         return [state_dot, vx, vy, ax, ay]
 
-# Empty lists for global coordinates Vx, Vy, ax, and ay
-Vx = []
-Vy = []
-Ax = []
-Ay = []
-t_ = []
+    def dynamic_bicycle_model(self, state, throttle, steering, mu_max, p):
+        """:This is the function for bicycle model with nonlinear tires (pacejka magic formula)
+        """
+        return None
+
+
 
 def planar_integrate(t, state, tire_torques, mu_max, delta, p):
     veh = vehicle_models()
@@ -336,16 +425,23 @@ def main():
     state0 = [U_init, 0, 0,  # U, V, wz
               U_init/p1.rw, U_init/p1.rw, U_init/p1.rw, U_init/p1.rw, # wFL, wFR, wRL, wRR
               0, 0, 0] # yaw, x, y
-    tire_torques = [1000, 1000, 1000, 1000]
-    delta = [0, 0, 10, 10]
+    tire_torques = [2000, 2000, 2000, 2000]
+    delta = pi/180 * array([0, 0, 2, 2])
     mu_max = [1, 1, 1, 1] # road surface maximum friction
 
 
     # planar_integrate(state0, 0, tire_torques, mu_max, delta, p1)
-
-    sol = solve_ivp(planar_integrate, [0, 10], state0, args=(tire_torques, mu_max, delta, p1), dense_output=True)
+    t_array = linspace(0, 100, 10000)
+    sol = solve_ivp(planar_integrate, [0, 100], state0, args=(tire_torques, mu_max, delta, p1), method='RK45', dense_output=True,
+                    t_eval = t_array)
     t = sol.t
     U, V, wz, wFL, wFR, wRL, wRR, yaw, x, y = sol.y
+
+    f = interp1d(t_, Vy)
+    Vy_interp = Vx_interp = np.zeros(len(t))
+    for i, tt in enumerate(t):
+        Vy_interp[i] = f(tt)
+
 
     plt.figure()
     plt.title('x-y position')
@@ -363,12 +459,18 @@ def main():
     plt.title('Lateral Velocity')
     plt.xlabel('Time (Sec)')
     plt.ylabel('Velocity (m/sec)')
-    plt.plot(t_, Vy)
+    plt.plot(t, Vy_interp, label='interp')
+    # plt.plot(t_, Vy, label='real')
+    plt.legend()
+    #
+    # plt.figure()
+    # plt.title('Forward Velocity')
+    # plt.xlabel('Time (Sec)')
+    # plt.ylabel('Velocity (m/sec)')
+    # plt.plot(t, Vx)
 
 
     plt.show()
-
-
 
 
 
