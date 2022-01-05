@@ -69,7 +69,7 @@ class KinematicBicycleModel:
 
         return x, y, yaw, velocity, delta, omega
 
-    def bicycle_model(self, state, delta, acceleration):
+    def bicycle_model(self, tire_type, state, delta, acceleration):
         g = 9.81
         M = 3600 * 0.453592
         L = 7 * 0.3048
@@ -92,37 +92,42 @@ class KinematicBicycleModel:
         alpha_f = delta - (V + a * r) / U
         alpha_r = (-V + b * r) / U
 
-        ## Dugoff
-        # N_f = M * g * b / L
-        # N_r = M * g * a / L
-        #
-        # s_f = 0
-        # s_r = 0
-        #
-        # mu_f = 0.85
-        # mu_r = 0.85
-        #
-        # F_yfd = (C_f * tan(alpha_f)) / (1 - abs(s_f))
-        # F_yrd = (C_r * tan(alpha_r)) / (1 - abs(s_r))
-        # F_xfd = 0
-        # F_xrd = 0
-        #
-        # lamda_f = mu_f/ (2 * ((F_yfd / N_f) ** 2 + (F_xfd / N_f) ** 2) ** 0.5)
-        # lamda_r = mu_r/ (2 * ((F_yrd / N_r) ** 2 + (F_xrd / N_r) ** 2) ** 0.5)
-        #
-        # if lamda_f >= 1:
-        #     Y_f = F_yfd
-        # else:
-        #     Y_f = F_yfd * 2 * lamda_f * (1 - lamda_f / 2)
-        #
-        # if lamda_r >= 1:
-        #     Y_r = F_yrd
-        # else:
-        #     Y_r = F_yrd * 2 * lamda_r * (1 - lamda_r / 2)
+        if alpha_f > 10:
+            dummy = 1
+
+        # ## Dugoff
+        if tire_type == 'Dugoff':
+            N_f = M * g * b / L
+            N_r = M * g * a / L
+
+            s_f = 0
+            s_r = 0
+
+            mu_f = 0.85
+            mu_r = 0.85
+
+            F_yfd = (C_f * tan(alpha_f)) / (1 - abs(s_f))
+            F_yrd = (C_r * tan(alpha_r)) / (1 - abs(s_r))
+            F_xfd = 0
+            F_xrd = 0
+
+            lamda_f = mu_f/ (2 * ((F_yfd / N_f) ** 2 + (F_xfd / N_f) ** 2) ** 0.5)
+            lamda_r = mu_r/ (2 * ((F_yrd / N_r) ** 2 + (F_xrd / N_r) ** 2) ** 0.5)
+
+            if lamda_f >= 1:
+                Y_f = F_yfd
+            else:
+                Y_f = F_yfd * 2 * lamda_f * (1 - lamda_f / 2)
+
+            if lamda_r >= 1:
+                Y_r = F_yrd
+            else:
+                Y_r = F_yrd * 2 * lamda_r * (1 - lamda_r / 2)
 
         # Linear tire
-        Y_f =  C_f * alpha_f
-        Y_r =  C_r * alpha_r
+        if tire_type == 'linear':
+            Y_f =  C_f * alpha_f
+            Y_r =  C_r * alpha_r
 
         # Equations
         U_dot = acceleration
@@ -144,8 +149,9 @@ class KinematicBicycleModel:
         velocity = np.sqrt(U**2+V**2)
 
         state_update = [U, V, r, theta, X, Y]
+        outputs = [Y_f, Y_r, alpha_f, alpha_r]
 
-        return X, Y, yaw, U, delta, theta_dot, state_update
+        return X, Y, yaw, U, delta, theta_dot, state_update, outputs
         # return [U_dot, V_dot, r_dot, theta_dot, X_dot, Y_dot]
 
 

@@ -35,6 +35,10 @@ class Path:
 
         self.px, self.py, self.pyaw, _ = generate_cubic_spline(x, y, ds)
 
+
+alpha_f1 = alpha_r1 = Y_f1 = Y_r1 = []
+alpha_f2 = alpha_r2 = Y_f2 = Y_r2 = []
+
 class Car:
 
     def __init__(self, init_x, init_y, init_yaw, px, py, pyaw, dt):
@@ -52,7 +56,8 @@ class Car:
         self.c_r = 0.01
         self.c_a = 2.0
 
-        self.state = [10, 0, 0, init_yaw, init_x, init_y]
+        init_vel = 10
+        self.state = [init_vel, 0, 0, init_yaw, init_x, init_y]
 
 
         # Tracker parameters
@@ -80,12 +85,27 @@ class Car:
 
     def drive(self):
         
-        # throttle = rand.uniform(1, 2)
-        throttle = 0
+        throttle = rand.uniform(0, 1)
+        # throttle = 0
         self.delta, self.target_id, self.crosstrack_error = self.tracker.stanley_control(self.x, self.y, self.yaw, self.v, self.delta)
         # self.x, self.y, self.yaw, self.v, _, _ = self.kbm.kinematic_model(self.state, self.y, self.yaw, self.v, throttle, self.delta)
         # self.state = [5, 0, 0, init_yaw, init_x, init_y]
-        self.x, self.y, self.yaw, self.v, _, _, self.state = self.kbm.bicycle_model(self.state, self.delta, throttle)
+        # _, _, _, _, _, _, _, outputs1 = self.kbm.bicycle_model('linear', self.state, self.delta, throttle)
+        # self.x, self.y, self.yaw, self.v, _, _, self.state, outputs1 = self.kbm.bicycle_model('linear', self.state, self.delta, throttle)
+
+        self.x, self.y, self.yaw, self.v, _, _, self.state, outputs2 = self.kbm.bicycle_model('Dugoff', self.state, self.delta, throttle)
+
+        # # Tire information - linear
+        # Y_f1.append(outputs1[0])
+        # Y_r1.append(outputs1[1])
+        # alpha_f1.append(outputs1[2])
+        # alpha_r1.append(outputs1[3])
+
+        # Tire information
+        Y_f2.append(outputs2[0])
+        Y_r2.append(outputs2[1])
+        alpha_f2.append(outputs2[2])
+        alpha_r2.append(outputs2[3])
 
         os.system('cls' if os.name=='nt' else 'clear')
         print(f"Cross-track term: {self.crosstrack_error}")
@@ -149,6 +169,18 @@ def main():
 
     _ = FuncAnimation(fig, animate, frames=sim.frames, interval=interval, repeat=sim.loop)
     # anim.save('animation.gif', writer='imagemagick', fps=50)
+    plt.show()
+
+    plt.figure()
+    plt.title('Front tire lateral force vs slip angle')
+    # plt.plot(alpha_f1, Y_f1)
+    plt.plot(alpha_f2, Y_f2)
+
+    plt.figure()
+    plt.title('Rear tire lateral force vs slip angle')
+    # plt.plot(alpha_r1, Y_r1)
+    plt.plot(alpha_r2, Y_r2)
+
     plt.show()
 
 if __name__ == '__main__':
