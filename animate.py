@@ -4,7 +4,8 @@ import numpy as np
 import pandas as pd
 import random as rand
 
-from kinematic_model import KinematicBicycleModel
+from vehicle_model import VehicleModel
+from vehicle_model import VehicleParameters
 from matplotlib.animation import FuncAnimation
 from libs.stanley_controller import StanleyController
 from libs.car_description import Description
@@ -39,6 +40,8 @@ class Path:
 alpha_f1 = alpha_r1 = Y_f1 = Y_r1 = []
 alpha_f2 = alpha_r2 = Y_f2 = Y_r2 = []
 
+p = VehicleParameters()
+
 class Car:
 
     def __init__(self, init_x, init_y, init_yaw, px, py, pyaw, dt):
@@ -47,7 +50,7 @@ class Car:
         self.x = init_x
         self.y = init_y
         self.yaw = init_yaw
-        self.v = 0.0
+        self.v = 10.0
         self.delta = 0.0
         self.omega = 0.0
         self.wheelbase = 2.96
@@ -57,8 +60,8 @@ class Car:
         self.c_a = 2.0
 
         init_vel = 10
-        self.state = [init_vel, 0, 0, init_yaw, init_x, init_y]
-
+        # self.state = [init_vel, 0, 0, init_yaw, init_x, init_y]
+        self.state = [init_vel, 0, 0, init_vel/p.rw, init_vel/p.rw, init_vel/p.rw, init_vel/p.rw, init_yaw, init_x, init_y]
 
         # Tracker parameters
         self.px = px
@@ -81,7 +84,7 @@ class Car:
         self.colour = 'black'
 
         self.tracker = StanleyController(self.k, self.ksoft, self.kyaw, self.ksteer, self.max_steer, self.wheelbase, self.px, self.py, self.pyaw)
-        self.kbm = KinematicBicycleModel(self.wheelbase, self.max_steer, self.dt, self.c_r, self.c_a)
+        self.kbm = VehicleModel(self.wheelbase, self.max_steer, self.dt, self.c_r, self.c_a)
 
     def drive(self):
         
@@ -92,8 +95,8 @@ class Car:
         # self.state = [5, 0, 0, init_yaw, init_x, init_y]
         # _, _, _, _, _, _, _, outputs1 = self.kbm.bicycle_model('linear', self.state, self.delta, throttle)
         # self.x, self.y, self.yaw, self.v, _, _, self.state, outputs1 = self.kbm.bicycle_model('linear', self.state, self.delta, throttle)
-
-        self.x, self.y, self.yaw, self.v, _, _, self.state, outputs2 = self.kbm.bicycle_model('Dugoff', self.state, self.delta, throttle)
+        # self.x, self.y, self.yaw, self.v, _, _, self.state, outputs2 = self.kbm.bicycle_model('Dugoff', self.state, self.delta, throttle)
+        _, _, _, _, _, self.x, self.y, self.yaw, self.v, self.state = self.kbm.planar_model(self.state, [3000, 3000, 3000, 3000], [1.0, 1.0, 1.0, 1.0], [self.delta, self.delta, 0, 0], p)
 
         # # Tire information - linear
         # Y_f1.append(outputs1[0])
@@ -102,10 +105,10 @@ class Car:
         # alpha_r1.append(outputs1[3])
 
         # Tire information
-        Y_f2.append(outputs2[0])
-        Y_r2.append(outputs2[1])
-        alpha_f2.append(outputs2[2])
-        alpha_r2.append(outputs2[3])
+        # Y_f2.append(outputs2[0])
+        # Y_r2.append(outputs2[1])
+        # alpha_f2.append(outputs2[2])
+        # alpha_r2.append(outputs2[3])
 
         os.system('cls' if os.name=='nt' else 'clear')
         print(f"Cross-track term: {self.crosstrack_error}")
@@ -171,17 +174,17 @@ def main():
     # anim.save('animation.gif', writer='imagemagick', fps=50)
     plt.show()
 
-    plt.figure()
-    plt.title('Front tire lateral force vs slip angle')
-    # plt.plot(alpha_f1, Y_f1)
-    plt.plot(alpha_f2, Y_f2)
-
-    plt.figure()
-    plt.title('Rear tire lateral force vs slip angle')
-    # plt.plot(alpha_r1, Y_r1)
-    plt.plot(alpha_r2, Y_r2)
-
-    plt.show()
+    # plt.figure()
+    # plt.title('Front tire lateral force vs slip angle')
+    # # plt.plot(alpha_f1, Y_f1)
+    # plt.plot(alpha_f2, Y_f2)
+    #
+    # plt.figure()
+    # plt.title('Rear tire lateral force vs slip angle')
+    # # plt.plot(alpha_r1, Y_r1)
+    # plt.plot(alpha_r2, Y_r2)
+    #
+    # plt.show()
 
 if __name__ == '__main__':
     main()

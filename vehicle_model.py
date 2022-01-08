@@ -6,7 +6,6 @@ from scipy.integrate import solve_ivp
 from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 
-
 # Empty lists for global coordinates Vx, Vy, ax, and ay
 Vx = []
 Vy = []
@@ -14,149 +13,9 @@ Ax = []
 Ay = []
 t_ = []
 
-class KinematicBicycleModel:
-
-    def __init__(self, wheelbase=1.0, max_steer=0.7, dt=0.05, c_r=0.0, c_a=0.0):
-        """
-        2D Kinematic Bicycle Model
-
-        At initialisation
-        :param wheelbase:       (float) vehicle's wheelbase [m]
-        :param max_steer:       (float) vehicle's steering limits [rad]
-        :param dt:              (float) discrete time period [s]
-        :param c_r:             (float) vehicle's coefficient of resistance 
-        :param c_a:             (float) vehicle's aerodynamic coefficient
-    
-        At every time step  
-        :param x:               (float) vehicle's x-coordinate [m]
-        :param y:               (float) vehicle's y-coordinate [m]
-        :param yaw:             (float) vehicle's heading [rad]
-        :param velocity:        (float) vehicle's velocity in the x-axis [m/s]
-        :param throttle:        (float) vehicle's accleration [m/s^2]
-        :param delta:           (float) vehicle's steering angle [rad]
-    
-        :return x:              (float) vehicle's x-coordinate [m]
-        :return y:              (float) vehicle's y-coordinate [m]
-        :return yaw:            (float) vehicle's heading [rad]
-        :return velocity:       (float) vehicle's velocity in the x-axis [m/s]
-        :return delta:          (float) vehicle's steering angle [rad]
-        :return omega:          (float) vehicle's angular velocity [rad/s]
-        """
-        self.dt = dt
-        self.wheelbase = wheelbase
-        self.max_steer = max_steer
-        self.c_r = c_r
-        self.c_a = c_a
-
-    def kinematic_model(self, x, y, yaw, velocity, throttle, delta):
-        # Compute the local velocity in the x-axis
-        f_load = velocity * (self.c_r + self.c_a * velocity)
-        velocity += self.dt * (throttle - f_load)
-
-        # Compute the radius and angular velocity of the kinematic bicycle model
-        delta = clip(delta, -self.max_steer, self.max_steer)
-
-        # Compute the state change rate
-        x_dot = velocity * cos(yaw)
-        y_dot = velocity * sin(yaw)
-        omega = velocity * tan(delta) / self.wheelbase
-
-        # Compute the final state using the discrete time model
-        x += x_dot * self.dt
-        y += y_dot * self.dt
-        yaw += omega * self.dt
-        yaw = normalise_angle(yaw)
-
-        return x, y, yaw, velocity, delta, omega
-
-    def bicycle_model(self, tire_type, state, delta, acceleration):
-        g = 9.81
-        M = 3600 * 0.453592
-        L = 7 * 0.3048
-        ratio = 0.85
-        b = L / (1 + ratio)
-        a = L - b
-        I = 0.5 * M * a * b
-        C_f = 350 * 4.48 * 180 / np.pi
-        K_U = 1.1
-        C_r = K_U * (a / b) * C_f
-        # N_f = M * g * b / L
-        # N_r = M * g * a / L
-        # mu_max = 0.85  # maximum friction coefficient
-        # C_x = 80000  # Longitudinal tire stiffness (N/rad)
-
-        # states unpack
-        U, V, r, theta, X, Y = state
-
-
-        alpha_f = delta - (V + a * r) / U
-        alpha_r = (-V + b * r) / U
-
-        if alpha_f > 10:
-            dummy = 1
-
-        # ## Dugoff
-        if tire_type == 'Dugoff':
-            N_f = M * g * b / L
-            N_r = M * g * a / L
-
-            s_f = 0
-            s_r = 0
-
-            mu_f = 0.85
-            mu_r = 0.85
-
-            F_yfd = (C_f * tan(alpha_f)) / (1 - abs(s_f))
-            F_yrd = (C_r * tan(alpha_r)) / (1 - abs(s_r))
-            F_xfd = 0
-            F_xrd = 0
-
-            lamda_f = mu_f/ (2 * ((F_yfd / N_f) ** 2 + (F_xfd / N_f) ** 2) ** 0.5)
-            lamda_r = mu_r/ (2 * ((F_yrd / N_r) ** 2 + (F_xrd / N_r) ** 2) ** 0.5)
-
-            if lamda_f >= 1:
-                Y_f = F_yfd
-            else:
-                Y_f = F_yfd * 2 * lamda_f * (1 - lamda_f / 2)
-
-            if lamda_r >= 1:
-                Y_r = F_yrd
-            else:
-                Y_r = F_yrd * 2 * lamda_r * (1 - lamda_r / 2)
-
-        # Linear tire
-        if tire_type == 'linear':
-            Y_f =  C_f * alpha_f
-            Y_r =  C_r * alpha_r
-
-        # Equations
-        U_dot = acceleration
-        V_dot = (Y_f + Y_r) / M - U * r
-        r_dot = (a * Y_f - b * Y_r) / I
-        theta_dot = r
-        X_dot = U * np.cos(theta) - V * np.sin(theta)
-        Y_dot = U * np.sin(theta) + V * np.cos(theta)
-
-        # Integration
-        U += U_dot * self.dt
-        V += V_dot * self.dt
-        r += r_dot * self.dt
-        theta += theta_dot * self.dt
-        X += X_dot * self.dt
-        Y += Y_dot * self.dt
-        yaw = normalise_angle(theta)
-
-        velocity = np.sqrt(U**2+V**2)
-
-        state_update = [U, V, r, theta, X, Y]
-        outputs = [Y_f, Y_r, alpha_f, alpha_r]
-
-        return X, Y, yaw, U, delta, theta_dot, state_update, outputs
-        # return [U_dot, V_dot, r_dot, theta_dot, X_dot, Y_dot]
-
 
 class VehicleParameters:
-    def __init__(self, mf=987.89, mr=869.93, mus=50, L=7 * 0.3048, ab_ratio=0.85, T=1.536, hg=0.55419, Jw=1,
+    def __init__(self, mf=987.89, mr=869.93, mus=50, L=2.906, ab_ratio=0.85, T=1.536, hg=0.55419, Jw=1,
                  kf=26290, kr=25830,
                  Efront=0.0376, Erear=0, LeverArm=0.13256,
                  BFL=20.6357, CFL=1.5047, DFL=1.1233):
@@ -201,11 +60,169 @@ class VehicleParameters:
         self.wR = self.T / 2
 
 
-class vehicle_models:
-    def __init__(self):
-        p = VehicleParameters()  # parameters
+p = VehicleParameters()  # parameters
+
+
+class VehicleModel:
+
+    def __init__(self, wheelbase=1.0, max_steer=0.7, dt=0.05, c_r=0.0, c_a=0.0):
+        """
+        2D Kinematic Bicycle Model
+
+        At initialisation
+        :param wheelbase:       (float) vehicle's wheelbase [m]
+        :param max_steer:       (float) vehicle's steering limits [rad]
+        :param dt:              (float) discrete time period [s]
+        :param c_r:             (float) vehicle's coefficient of resistance 
+        :param c_a:             (float) vehicle's aerodynamic coefficient
+    
+        At every time step  
+        :param x:               (float) vehicle's x-coordinate [m]
+        :param y:               (float) vehicle's y-coordinate [m]
+        :param yaw:             (float) vehicle's heading [rad]
+        :param velocity:        (float) vehicle's velocity in the x-axis [m/s]
+        :param throttle:        (float) vehicle's accleration [m/s^2]
+        :param delta:           (float) vehicle's steering angle [rad]
+    
+        :return x:              (float) vehicle's x-coordinate [m]
+        :return y:              (float) vehicle's y-coordinate [m]
+        :return yaw:            (float) vehicle's heading [rad]
+        :return velocity:       (float) vehicle's velocity in the x-axis [m/s]
+        :return delta:          (float) vehicle's steering angle [rad]
+        :return omega:          (float) vehicle's angular velocity [rad/s]
+        """
+        self.dt = dt
+        self.wheelbase = wheelbase
+        self.max_steer = max_steer
+        self.c_r = c_r
+        self.c_a = c_a
+
+    def kinematic_model(self, x, y, yaw, velocity, throttle, delta):
+        """
+        The original kinematic bicycle model
+        :param x:
+        :param y:
+        :param yaw:
+        :param velocity:
+        :param throttle:
+        :param delta:
+        :return:
+        """
+        # Compute the local velocity in the x-axis
+        f_load = velocity * (self.c_r + self.c_a * velocity)
+        velocity += self.dt * (throttle - f_load)
+
+        # Compute the radius and angular velocity of the kinematic bicycle model
+        delta = clip(delta, -self.max_steer, self.max_steer)
+
+        # Compute the state change rate
+        x_dot = velocity * cos(yaw)
+        y_dot = velocity * sin(yaw)
+        omega = velocity * tan(delta) / self.wheelbase
+
+        # Compute the final state using the discrete time model
+        x += x_dot * self.dt
+        y += y_dot * self.dt
+        yaw += omega * self.dt
+        yaw = normalise_angle(yaw)
+
+        return x, y, yaw, velocity, delta, omega
+
+    def bicycle_model(self, tire_type, state, delta, acceleration):
+        """
+        Bicycle model with linear and nonlinear (Dugoff) tires
+        :param tire_type: 'Linear', 'Dugoff'
+        :param state:
+        :param delta:
+        :param acceleration:
+        :return:
+        """
+        g = 9.81
+        M = 3600 * 0.453592
+        L = 7 * 0.3048
+        ratio = 0.85
+        b = L / (1 + ratio)
+        a = L - b
+        I = 0.5 * M * a * b
+        C_f = 350 * 4.48 * 180 / np.pi
+        K_U = 1.1
+        C_r = K_U * (a / b) * C_f
+        # N_f = M * g * b / L
+        # N_r = M * g * a / L
+        # mu_max = 0.85  # maximum friction coefficient
+        # C_x = 80000  # Longitudinal tire stiffness (N/rad)
+
+        # states unpack
+        U, V, r, theta, X, Y = state
+
+        alpha_f = delta - (V + a * r) / U
+        alpha_r = (-V + b * r) / U
+
+        if alpha_f > 10:
+            dummy = 1
+
+        # ## Dugoff
+        if tire_type == 'Dugoff':
+            N_f = M * g * b / L
+            N_r = M * g * a / L
+
+            s_f = 0
+            s_r = 0
+
+            mu_f = 0.85
+            mu_r = 0.85
+
+            F_yfd = (C_f * tan(alpha_f)) / (1 - abs(s_f))
+            F_yrd = (C_r * tan(alpha_r)) / (1 - abs(s_r))
+            F_xfd = 0
+            F_xrd = 0
+
+            lamda_f = mu_f / (2 * ((F_yfd / N_f) ** 2 + (F_xfd / N_f) ** 2) ** 0.5)
+            lamda_r = mu_r / (2 * ((F_yrd / N_r) ** 2 + (F_xrd / N_r) ** 2) ** 0.5)
+
+            if lamda_f >= 1:
+                Y_f = F_yfd
+            else:
+                Y_f = F_yfd * 2 * lamda_f * (1 - lamda_f / 2)
+
+            if lamda_r >= 1:
+                Y_r = F_yrd
+            else:
+                Y_r = F_yrd * 2 * lamda_r * (1 - lamda_r / 2)
+
+        # Linear tire
+        if tire_type == 'linear':
+            Y_f = C_f * alpha_f
+            Y_r = C_r * alpha_r
+
+        # Equations
+        U_dot = acceleration
+        V_dot = (Y_f + Y_r) / M - U * r
+        r_dot = (a * Y_f - b * Y_r) / I
+        theta_dot = r
+        X_dot = U * np.cos(theta) - V * np.sin(theta)
+        Y_dot = U * np.sin(theta) + V * np.cos(theta)
+
+        # Integration
+        U += U_dot * self.dt
+        V += V_dot * self.dt
+        r += r_dot * self.dt
+        theta += theta_dot * self.dt
+        X += X_dot * self.dt
+        Y += Y_dot * self.dt
+        yaw = normalise_angle(theta)
+
+        velocity = np.sqrt(U ** 2 + V ** 2)
+
+        state_update = [U, V, r, theta, X, Y]
+        outputs = [Y_f, Y_r, alpha_f, alpha_r]
+
+        return X, Y, yaw, U, delta, theta_dot, state_update, outputs
+        # return [U_dot, V_dot, r_dot, theta_dot, X_dot, Y_dot]
 
     def planar_model(self, state, tire_torques, mu_max, delta, p):
+        """:This is the function for 7 ِِDoF model with nonlinear tires (pacejka magic formula)
+        """
         # Unpacking the state-space and inputs
         U, V, wz, wFL, wFR, wRL, wRR, yaw, x, y = state
         deltaFL, deltaFR, deltaRL, deltaRR = delta
@@ -214,20 +231,20 @@ class vehicle_models:
 
         # Parameters
         g = 9.81
-        p.BFL = mumaxFL
-        p.CFL = mumaxFL
+        # p.BFL = mumaxFL
+        # p.CFL = mumaxFL
         p.DFL = mumaxFL
 
-        p.BFR = mumaxFR
-        p.CFR = mumaxFR
+        # p.BFR = mumaxFR
+        # p.CFR = mumaxFR
         p.DFR = mumaxFR
 
-        p.BRL = mumaxRL
-        p.CRL = mumaxRL
+        # p.BRL = mumaxRL
+        # p.CRL = mumaxRL
         p.DRL = mumaxRL
 
-        p.BRR = mumaxRR
-        p.CRR = mumaxRR
+        # p.BRR = mumaxRR
+        # p.CRR = mumaxRR
         p.DRR = mumaxRR
 
         ## Normal forces (static forces)
@@ -242,10 +259,10 @@ class vehicle_models:
         DfzyR = p.m * p.hg * p.a / ((p.a + p.b) * (p.wL + p.wR))
 
         # TODO: Algebraic loop for ax and ay needs to be fixed later
-        fFLz = fFLz0 #- DfzxL * ax_prev - DfzyF * ay_prev
-        fFRz = fFRz0 #- DfzxR * ax_prev + DfzyF * ay_prev
-        fRLz = fRLz0 #+ DfzxL * ax_prev - DfzyR * ay_prev
-        fRRz = fRRz0 #+ DfzxR * ax_prev + DfzyR * ay_prev
+        fFLz = fFLz0  # - DfzxL * ax_prev - DfzyF * ay_prev
+        fFRz = fFRz0  # - DfzxR * ax_prev + DfzyF * ay_prev
+        fRLz = fRLz0  # + DfzxL * ax_prev - DfzyR * ay_prev
+        fRRz = fRRz0  # + DfzxR * ax_prev + DfzyR * ay_prev
 
         ## Compute tire slip Wheel velocities
         vFLxc = U - p.T * wz / 2
@@ -402,17 +419,24 @@ class vehicle_models:
         axOut = axc
         ayOut = ayc
 
-        return [state_dot, vx, vy, ax, ay]
+        # Integration
+        U += U_dot * self.dt
+        V += V_dot * self.dt
+        wz += wz_dot * self.dt
+        wFL = wFL_dot * self.dt
+        wFR = wFR_dot * self.dt
+        wRL = wRL_dot * self.dt
+        wRR = wRR_dot * self.dt
+        x += x_dot * self.dt
+        y += y_dot * self.dt
+        yaw = normalise_angle(yaw)
+        state_update = [U, V, wz, wFL, wFR, wRL, wRR, yaw, x, y]
 
-    def dynamic_bicycle_model(self, state, throttle, steering, mu_max, p):
-        """:This is the function for bicycle model with nonlinear tires (pacejka magic formula)
-        """
-        return None
-
+        return [state_dot, vx, vy, ax, ay, x, y, yaw, U, state_update]
 
 
 def planar_integrate(t, state, tire_torques, mu_max, delta, p):
-    veh = vehicle_models()
+    veh = VehicleModel()
     [state_dot, vx, vy, ax, ay] = veh.planar_model(state, tire_torques, mu_max, delta, p)
     Vx.append(vx)
     Vy.append(vy)
@@ -422,24 +446,24 @@ def planar_integrate(t, state, tire_torques, mu_max, delta, p):
     return state_dot
 
 
-
-
 def main():
     # print("This script is not meant to be executable, and should be used as a library.")
     p1 = VehicleParameters()
-    U_init = 35
+    U_init = 8.33
     state0 = [U_init, 0, 0,  # U, V, wz
-              U_init/p1.rw, U_init/p1.rw, U_init/p1.rw, U_init/p1.rw, # wFL, wFR, wRL, wRR
-              0, 0, 0] # yaw, x, y
-    tire_torques = [2000, 2000, 2000, 2000]
-    delta = pi/180 * array([0, 0, 2, 2])
-    mu_max = [1, 1, 1, 1] # road surface maximum friction
+              U_init / p1.rw, U_init / p1.rw, U_init / p1.rw, U_init / p1.rw,  # wFL, wFR, wRL, wRR
+              0, 0, 0]  # yaw, x, y
+    print("Initial condition:", state0)
 
+    tire_torques = [0, 0, 0, 0]
+    delta = pi / 180 * array([2, 2, 0, 0])
+    mu_max = [1, 1, 1, 1]  # road surface maximum friction
 
     # planar_integrate(state0, 0, tire_torques, mu_max, delta, p1)
-    t_array = linspace(0, 100, 10000)
-    sol = solve_ivp(planar_integrate, [0, 100], state0, args=(tire_torques, mu_max, delta, p1), method='RK45', dense_output=True,
-                    t_eval = t_array)
+    t_array = linspace(0, 30, 10000)
+    sol = solve_ivp(planar_integrate, [0, 30], state0, args=(tire_torques, mu_max, delta, p1), method='RK45',
+                    dense_output=True,
+                    t_eval=t_array)
     t = sol.t
     U, V, wz, wFL, wFR, wRL, wRR, yaw, x, y = sol.y
 
@@ -447,7 +471,6 @@ def main():
     Vy_interp = Vx_interp = np.zeros(len(t))
     for i, tt in enumerate(t):
         Vy_interp[i] = f(tt)
-
 
     plt.figure()
     plt.title('x-y position')
@@ -469,18 +492,19 @@ def main():
     # plt.plot(t_, Vy, label='real')
     plt.legend()
     #
-    # plt.figure()
-    # plt.title('Forward Velocity')
-    # plt.xlabel('Time (Sec)')
-    # plt.ylabel('Velocity (m/sec)')
-    # plt.plot(t, Vx)
+    plt.figure()
+    plt.title('U')
+    plt.xlabel('Time (Sec)')
+    plt.ylabel('Velocity (m/sec)')
+    plt.plot(t, U, label='U')
 
+    plt.figure()
+    plt.title('V')
+    plt.xlabel('Time (Sec)')
+    plt.ylabel('Velocity (m/sec)')
+    plt.plot(t, V, label='V')
 
     plt.show()
-
-
-
-
 
 
 if __name__ == "__main__":

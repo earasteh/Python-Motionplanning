@@ -93,7 +93,7 @@ class StanleyController:
         crosstrack_steering_error, crosstrack_error = self.calculate_crosstrack_term(target_velocity, yaw, dx, dy, absolute_error)
         yaw_rate_damping = self.calculate_yaw_rate_term(target_velocity, steering_angle)
         
-        desired_steering_angle = yaw_error + crosstrack_steering_error + yaw_rate_damping
+        desired_steering_angle = yaw_error + crosstrack_steering_error + 0*yaw_rate_damping
 
         # Constrains steering angle to the vehicle limits
         desired_steering_angle += self.calculate_steering_delay_term(desired_steering_angle, steering_angle)
