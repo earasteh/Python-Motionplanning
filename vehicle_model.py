@@ -423,13 +423,15 @@ class VehicleModel:
         U += U_dot * self.dt
         V += V_dot * self.dt
         wz += wz_dot * self.dt
-        wFL = wFL_dot * self.dt
-        wFR = wFR_dot * self.dt
-        wRL = wRL_dot * self.dt
-        wRR = wRR_dot * self.dt
+        wFL += wFL_dot * self.dt
+        wFR += wFR_dot * self.dt
+        wRL += wRL_dot * self.dt
+        wRR += wRR_dot * self.dt
+        yaw += yaw_dot * self.dt
         x += x_dot * self.dt
         y += y_dot * self.dt
-        yaw = normalise_angle(yaw)
+
+        # yaw = normalise_angle(yaw)
         state_update = [U, V, wz, wFL, wFR, wRL, wRR, yaw, x, y]
 
         return [state_dot, vx, vy, ax, ay, x, y, yaw, U, state_update]

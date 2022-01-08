@@ -11,21 +11,21 @@ from libs.stanley_controller import StanleyController
 from libs.car_description import Description
 from libs.cubic_spline_interpolator import generate_cubic_spline
 
+
 class Simulation:
 
     def __init__(self):
-
         fps = 50.0
 
-        self.dt = 1/fps
+        self.dt = 1 / fps
         self.map_size = 40
         self.frames = 2500
         self.loop = False
 
+
 class Path:
 
     def __init__(self):
-
         # Get path to waypoints.csv
         dir_path = 'data/waypoints2.csv'
         df = pd.read_csv(dir_path)
@@ -42,10 +42,10 @@ alpha_f2 = alpha_r2 = Y_f2 = Y_r2 = []
 
 p = VehicleParameters()
 
+
 class Car:
 
     def __init__(self, init_x, init_y, init_yaw, px, py, pyaw, dt):
-
         # Model parameters
         self.x = init_x
         self.y = init_y
@@ -53,15 +53,16 @@ class Car:
         self.v = 10.0
         self.delta = 0.0
         self.omega = 0.0
-        self.wheelbase = 2.96
-        self.max_steer = np.deg2rad(33)
+        self.wheelbase = 2.906
+        self.max_steer = np.deg2rad(45)
         self.dt = dt
         self.c_r = 0.01
         self.c_a = 2.0
 
         init_vel = 10
         # self.state = [init_vel, 0, 0, init_yaw, init_x, init_y]
-        self.state = [init_vel, 0, 0, init_vel/p.rw, init_vel/p.rw, init_vel/p.rw, init_vel/p.rw, init_yaw, init_x, init_y]
+        self.state = [init_vel, 0, 0, init_vel/p.rw, init_vel/p.rw, init_vel/ p.rw, init_vel / p.rw, init_yaw,
+                      init_x, init_y]
 
         # Tracker parameters
         self.px = px
@@ -83,20 +84,25 @@ class Car:
         self.rear_overhang = (self.overall_length - self.wheelbase) / 2
         self.colour = 'black'
 
-        self.tracker = StanleyController(self.k, self.ksoft, self.kyaw, self.ksteer, self.max_steer, self.wheelbase, self.px, self.py, self.pyaw)
+        self.tracker = StanleyController(self.k, self.ksoft, self.kyaw, self.ksteer, self.max_steer, self.wheelbase,
+                                         self.px, self.py, self.pyaw)
         self.kbm = VehicleModel(self.wheelbase, self.max_steer, self.dt, self.c_r, self.c_a)
 
     def drive(self):
-        
         throttle = rand.uniform(0, 1)
         # throttle = 0
-        self.delta, self.target_id, self.crosstrack_error = self.tracker.stanley_control(self.x, self.y, self.yaw, self.v, self.delta)
+        self.delta, self.target_id, self.crosstrack_error = self.tracker.stanley_control(self.x, self.y, self.yaw,
+                                                                                         self.v, self.delta)
         # self.x, self.y, self.yaw, self.v, _, _ = self.kbm.kinematic_model(self.state, self.y, self.yaw, self.v, throttle, self.delta)
         # self.state = [5, 0, 0, init_yaw, init_x, init_y]
         # _, _, _, _, _, _, _, outputs1 = self.kbm.bicycle_model('linear', self.state, self.delta, throttle)
         # self.x, self.y, self.yaw, self.v, _, _, self.state, outputs1 = self.kbm.bicycle_model('linear', self.state, self.delta, throttle)
         # self.x, self.y, self.yaw, self.v, _, _, self.state, outputs2 = self.kbm.bicycle_model('Dugoff', self.state, self.delta, throttle)
-        _, _, _, _, _, self.x, self.y, self.yaw, self.v, self.state = self.kbm.planar_model(self.state, [3000, 3000, 3000, 3000], [1.0, 1.0, 1.0, 1.0], [self.delta, self.delta, 0, 0], p)
+        _, _, _, _, _, self.x, self.y, self.yaw, self.v, self.state = self.kbm.planar_model(self.state,
+                                                                                            [100, 100, 100, 100],
+                                                                                            [1.0, 1.0, 1.0, 1.0],
+                                                                                            [self.delta, self.delta, 0,
+                                                                                             0], p)
 
         # # Tire information - linear
         # Y_f1.append(outputs1[0])
@@ -110,17 +116,18 @@ class Car:
         # alpha_f2.append(outputs2[2])
         # alpha_r2.append(outputs2[3])
 
-        os.system('cls' if os.name=='nt' else 'clear')
+        os.system('cls' if os.name == 'nt' else 'clear')
         print(f"Cross-track term: {self.crosstrack_error}")
 
+
 def main():
-    
     sim = Simulation()
     path = Path()
     car = Car(path.px[0], path.py[0], path.pyaw[0], path.px, path.py, path.pyaw, sim.dt)
-    desc = Description(car.overall_length, car.overall_width, car.rear_overhang, car.tyre_diameter, car.tyre_width, car.axle_track, car.wheelbase)
+    desc = Description(car.overall_length, car.overall_width, car.rear_overhang, car.tyre_diameter, car.tyre_width,
+                       car.axle_track, car.wheelbase)
 
-    interval = sim.dt * 10**3
+    interval = sim.dt * 10 ** 3
 
     fig = plt.figure()
     ax = plt.axes()
@@ -140,9 +147,8 @@ def main():
     rear_axle, = ax.plot(car.x, car.y, '+', color=car.colour, markersize=2)
 
     plt.grid()
-    
-    def animate(frame):
 
+    def animate(frame):
         # Camera tracks car
         ax.set_xlim(car.x - sim.map_size, car.x + sim.map_size)
         ax.set_ylim(car.y - sim.map_size, car.y + sim.map_size)
@@ -164,7 +170,7 @@ def main():
         annotation.set_text(f'{car.x:.1f}, {car.y:.1f}')
         annotation.set_position((car.x, car.y + 5))
 
-        plt.title(f'{sim.dt*frame:.2f}s', loc='right')
+        plt.title(f'{sim.dt * frame:.2f}s', loc='right')
         plt.xlabel(f'Speed: {car.v:.2f} m/s', loc='left')
         # plt.savefig(f'fig/visualisation_{frame:04}.png')
 
@@ -185,6 +191,7 @@ def main():
     # plt.plot(alpha_r2, Y_r2)
     #
     # plt.show()
+
 
 if __name__ == '__main__':
     main()
