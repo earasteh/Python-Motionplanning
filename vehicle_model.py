@@ -433,8 +433,12 @@ class VehicleModel:
 
         # yaw = normalise_angle(yaw)
         state_update = [U, V, wz, wFL, wFR, wRL, wRR, yaw, x, y]
+        outputs = [fFLx, fFRx, fRLx, fRRx,
+                   fFLy, fFRy, fRLy, fRRy,
+                   fFLz, fFRz, fRLz, fRRz,
+                   sFL, sFR, sRL, sRR]
 
-        return [state_dot, vx, vy, ax, ay, x, y, yaw, U, state_update]
+        return [state_dot, vx, vy, ax, ay, x, y, yaw, U, state_update, outputs]
 
 
 def planar_integrate(t, state, tire_torques, mu_max, delta, p):
