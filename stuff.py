@@ -66,8 +66,10 @@ for i, lam in enumerate(lamda_f):
         Y_f[i] = F_yfd[i] * 2 * lam * (1 - lam / 2)
 
 
-plt.figure()
-plt.title('Front tire lateral force vs slip angle')
-# plt.plot(alpha_f1, Y_f1)
-plt.plot(alpha_f, Y_f)
-plt.show()
+# plt.figure()
+# plt.title('Front tire lateral force vs slip angle')
+# # plt.plot(alpha_f1, Y_f1)
+# plt.plot(alpha_f, Y_f)
+# plt.show()
+
+

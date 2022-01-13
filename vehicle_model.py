@@ -60,7 +60,7 @@ class VehicleParameters:
         self.wR = self.T / 2
 
 
-p = VehicleParameters()  # parameters
+param = VehicleParameters()  # parameters
 
 
 class VehicleModel:
@@ -420,6 +420,7 @@ class VehicleModel:
         ayOut = ayc
 
         # Integration
+
         U += U_dot * self.dt
         V += V_dot * self.dt
         wz += wz_dot * self.dt
@@ -438,7 +439,20 @@ class VehicleModel:
                    fFLz, fFRz, fRLz, fRRz,
                    sFL, sFR, sRL, sRR]
 
-        return [state_dot, vx, vy, ax, ay, x, y, yaw, U, state_update, outputs]
+        # return [state_dot, vx, vy, ax, ay, x, y, yaw, U, state_update, outputs]
+        return [state_dot, vx, vy, ax, ay, x, y, yaw, U, outputs]
+
+
+    def planar_model_RK4(self, state, tire_torques, mu_max, delta, p):
+        h = self.dt
+        state_dot0, _, _, _, _, _, _, _, _, _, _ = self.planar_model(state, tire_torques, mu_max, delta, p)
+        K1 = h * state_dot0
+        tire_torques[:] = [x - K1*h/2 for x in tire_torques]
+
+        state_dot0, _, _, _, _, _, _, _, _, _, _ = self.planar_model(state, tire_torques , mu_max, delta, p)
+
+
+        return 0
 
 
 def planar_integrate(t, state, tire_torques, mu_max, delta, p):

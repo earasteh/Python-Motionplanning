@@ -1,4 +1,4 @@
-# Kinematic Bicycle Model
+# Motion Planning Project
 
 [![Total alerts](https://img.shields.io/lgtm/alerts/g/winstxnhdw/KinematicBicycleModel.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/winstxnhdw/KinematicBicycleModel/alerts/)
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/winstxnhdw/KinematicBicycleModel.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/winstxnhdw/KinematicBicycleModel/context:python)
@@ -8,16 +8,18 @@
 </div>
 
 
-This project is forked from https://github.com/winstxnhdw/KinematicBicycleModel .
+Some part of this project is taken from https://github.com/winstxnhdw/KinematicBicycleModel .
 
 Added features:
-- A 7 DoF vehicle model with Pacejka magic tire formula
-
+- A 7 DoF vehicle model with Pacejka magic tire formula (Constant normal forces)
+- Longitudinal PID controller
 To Do:
+- Add Runge-Kutta (RK4) to the integration step
+- Change the chassis model to have algebraic normal forces instead of constant normal forces
 - Motion planning features
   - Conformal Lattice Planner
   - RRT*
-
+- Motion controllers need more tuning
 
 ## Abstract
 
