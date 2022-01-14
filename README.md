@@ -21,8 +21,6 @@ To Do:
 
 ## Abstract
 
-A python library for the Kinematic Bicycle model. The Kinematic Bicycle is a compromise between the non-linear and linear bicycle models for high-speed integration of the library with little configuration.
-
 ```yaml
 At initialisation
 :param wheelbase:       (float) vehicle's wheelbase [m]
@@ -49,12 +47,7 @@ At every time step
 
 ## Advantages
 
-- The model allows the vehicle to come to rest without passing the model a negative acceleration; similar to the non-linear bicycle.
-- This lightweight model is able to accurately represent a vehicle with no slip or tire stiffness.
-
 ## Limitations
-
-Just like with all other bicycle models, this model is a discrete model and loses its accuracy when the time step is set too large or the vehicle is made to travel at unreasonably high speeds. Usually, the FPS of the simulation should be set to the highest possible value for the greatest accuracy. However, for rendering high-quality GIFs, 50 FPS is found to be most optimal.
 
 ## Requirements
 
@@ -77,9 +70,6 @@ python animation.py
 ```
 
 ## Concept
-
-To simplify the equations, we perform all calculations from the rear axle.
-
-<div align="center">
-	<img src="resources/KinematicBicycleModel.png" />
-</div>
+- Planar vehicle model
+- Stanley Controller as a lateral control
+- Longitudinal Controller
