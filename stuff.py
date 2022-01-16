@@ -1,3 +1,7 @@
+"""
+This file is just to test things and experiment outside the main project script.
+"""
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -71,5 +75,3 @@ for i, lam in enumerate(lamda_f):
 # # plt.plot(alpha_f1, Y_f1)
 # plt.plot(alpha_f, Y_f)
 # plt.show()
-
-

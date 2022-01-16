@@ -231,20 +231,10 @@ class VehicleModel:
 
         # Parameters
         g = 9.81
-        # p.BFL = mumaxFL
-        # p.CFL = mumaxFL
+
         p.DFL = mumaxFL
-
-        # p.BFR = mumaxFR
-        # p.CFR = mumaxFR
         p.DFR = mumaxFR
-
-        # p.BRL = mumaxRL
-        # p.CRL = mumaxRL
         p.DRL = mumaxRL
-
-        # p.BRR = mumaxRR
-        # p.CRR = mumaxRR
         p.DRR = mumaxRR
 
         ## Normal forces (static forces)
@@ -432,7 +422,7 @@ class VehicleModel:
         x += x_dot * self.dt
         y += y_dot * self.dt
 
-        # yaw = normalise_angle(yaw)
+        yaw = normalise_angle(yaw)
         state_update = [U, V, wz, wFL, wFR, wRL, wRR, yaw, x, y]
         outputs = [fFLx, fFRx, fRLx, fRRx,
                    fFLy, fFRy, fRLy, fRRy,
@@ -442,15 +432,13 @@ class VehicleModel:
         return [state_dot, vx, vy, ax, ay, x, y, yaw, U, state_update, outputs]
         # return [state_dot, vx, vy, ax, ay, x, y, yaw, U, outputs]
 
-
     def planar_model_RK4(self, state, tire_torques, mu_max, delta, p):
         h = self.dt
         state_dot0, _, _, _, _, _, _, _, _, _, _ = self.planar_model(state, tire_torques, mu_max, delta, p)
         K1 = h * state_dot0
-        tire_torques[:] = [x - K1*h/2 for x in tire_torques]
+        tire_torques[:] = [x - K1 * h / 2 for x in tire_torques]
 
-        state_dot0, _, _, _, _, _, _, _, _, _, _ = self.planar_model(state, tire_torques , mu_max, delta, p)
-
+        state_dot0, _, _, _, _, _, _, _, _, _, _ = self.planar_model(state, tire_torques, mu_max, delta, p)
 
         return 0
 

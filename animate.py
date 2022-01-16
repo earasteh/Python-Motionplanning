@@ -13,6 +13,7 @@ from libs.stanley_controller import LongitudinalController
 from libs.car_description import Description
 from libs.cubic_spline_interpolator import generate_cubic_spline
 from collections import namedtuple
+from env import world  # Road definition
 
 
 class Simulation:
@@ -24,20 +25,6 @@ class Simulation:
         self.map_size = 40
         self.frames = 25000
         self.loop = False
-
-
-class Path:
-
-    def __init__(self):
-        # Get path to waypoints.csv
-        dir_path = 'data/waypoints.csv'
-        df = pd.read_csv(dir_path)
-
-        x = df['X-axis'].values
-        y = df['Y-axis'].values
-        ds = 0.05
-
-        self.px, self.py, self.pyaw, _ = generate_cubic_spline(x, y, ds)
 
 
 # alpha_f1 = alpha_r1 = Y_f1 = Y_r1 = []
@@ -84,6 +71,7 @@ log_Fz_RL = []
 log_Fz_RR = []
 
 log_yaw_rate = []
+log_latac = []
 
 p = VehicleParameters()
 
@@ -92,12 +80,12 @@ class Car:
 
     def __init__(self, init_x, init_y, init_yaw, px, py, pyaw, dt):
         # Model parameters
-        init_vel = 20.0
+        init_vel = 15.0
         self.x = init_x
         self.y = init_y
         self.yaw = init_yaw
         self.prev_vel = self.v = init_vel
-        self.target_vel = 20.0
+        self.target_vel = 15.0
         self.total_vel_error = 0
         self.delta = 0.0
         self.omega = 0.0
@@ -115,7 +103,7 @@ class Car:
         self.px = px
         self.py = py
         self.pyaw = pyaw
-        self.k = 8.0 * 2
+        self.k = 8.0 * 5
         self.ksoft = 1.0
         self.kyaw = 0.01
         self.ksteer = 0
@@ -168,17 +156,20 @@ class Car:
                                                                           self.total_vel_error, self.dt)
         self.prev_vel = self.v
         state_dot, _, _, _, _, self.x, self.y, self.yaw, self.v, self.state, outputs = self.kbm.planar_model(self.state,
-                                                                                                     torque_vec,
-                                                                                                     [1.0, 1.0, 1.0,
-                                                                                                      1.0], [self.delta,
-                                                                                                             self.delta,
-                                                                                                             0, 0], p)
+                                                                                                             torque_vec,
+                                                                                                             [1.0, 1.0,
+                                                                                                              1.0,
+                                                                                                              1.0], [
+                                                                                                                 self.delta,
+                                                                                                                 self.delta,
+                                                                                                                 0, 0],
+                                                                                                             p)
 
         U, V, wz, wFL, wFR, wRL, wRR, yaw, x, y = self.state
         U_dot, V_dot, wz_dot, wFL_dot, wFR_dot, wRL_dot, wRR_dot, yaw_dot, x_dot, y_dot = state_dot
         fFLx, fFRx, fRLx, fRRx, fFLy, fFRy, fRLy, fRRy, fFLz, fFRz, fRLz, fRRz, sFL, sFR, sRL, sRR = outputs
 
-        log_time.append(log_time[-1]+self.dt)
+        log_time.append(log_time[-1] + self.dt)
 
         log_U.append(U)
         log_V.append(V)
@@ -219,6 +210,7 @@ class Car:
         log_sRR.append(sRR)
 
         log_yaw_rate.append(yaw_dot)
+        log_latac.append(V_dot)
 
         # logged = DataLog(AllData[-1].time+self.dt, U, V, wz,
         #                  wFL, wFR, wRL, wRR,
@@ -248,7 +240,8 @@ class Car:
 
 def main():
     sim = Simulation()
-    path = Path()
+    path = world.path
+
     car = Car(path.px[0], path.py[0], path.pyaw[0], path.px, path.py, path.pyaw, sim.dt)
     desc = Description(car.overall_length, car.overall_width, car.rear_overhang, car.tyre_diameter, car.tyre_width,
                        car.axle_track, car.wheelbase)
@@ -259,7 +252,11 @@ def main():
     ax = plt.axes()
     ax.set_aspect('equal')
 
-    # road = plt.Polygon((0, 0), 50, color='gray', fill=False, linewidth=30)
+    # road = plt.Circle((0, 0), 50, color='gray', fill=False, linewidth=30)
+    road = plt.fill(np.append(world.bound_xr, world.bound_xl[::-1]), np.append(world.bound_yr, world.bound_yl[::-1]),
+                    color='gray')
+    ax.plot(world.bound_xl, world.bound_yl, color='black')
+    ax.plot(world.bound_xr, world.bound_yr, color='black')
     ax.plot(path.px, path.py, '--', color='gold')
 
     annotation = ax.annotate(f'{car.x:.1f}, {car.y:.1f}', xy=(car.x, car.y + 5), color='black', annotation_clip=False)
@@ -301,7 +298,7 @@ def main():
 
         return outline, fr, rr, fl, rl, rear_axle, target,
 
-    _ = FuncAnimation(fig, animate, frames=sim.frames, interval=interval, repeat=sim.loop)
+    # _ = FuncAnimation(fig, animate, frames=sim.frames, interval=interval, repeat=sim.loop)
     # anim.save('animation.gif', writer='imagemagick', fps=50)
     plt.show()
 
@@ -311,13 +308,11 @@ def main():
     plt.xlabel('Time (Sec.)')
     plt.ylabel('Forward Velocity (m/s)')
 
-
     plt.figure()
     plt.title('Lateral Velocity')
     plt.plot(log_time[:-1], log_V)
     plt.xlabel('Time (Sec.)')
     plt.ylabel('Lateral Velocity (m/s)')
-
 
     plt.figure()
     plt.title('Yaw rate')
@@ -325,10 +320,15 @@ def main():
     plt.xlabel('Time (Sec.)')
     plt.ylabel('Yaw rate (rad/sec)')
 
+    plt.figure()
+    plt.title('Lateral Acceleration')
+    plt.plot(log_time[:-1], log_latac)
+    plt.xlabel('Time (Sec.)')
+    plt.ylabel('Lateral Acceleration (m/s^2)')
+
     # plt.figure()
     # plt.title('FxFL')
     # plt.plot(log_time[:-1], log_Fx_FL)
-
 
     plt.figure()
     plt.title('Normal Forces')
@@ -339,7 +339,6 @@ def main():
     plt.legend(['FL', 'FR', 'RL', 'RR'])
     plt.xlabel('Time (Sec.)')
     plt.ylabel('Normal Force (N)')
-
 
     plt.figure()
     plt.title('Torque at each wheel')
@@ -354,20 +353,7 @@ def main():
 
 
 
-
     plt.show()
-
-    # plt.figure()
-    # plt.title('Front tire lateral force vs slip angle')
-    # # plt.plot(alpha_f1, Y_f1)
-    # plt.plot(alpha_f2, Y_f2)
-    #
-    # plt.figure()
-    # plt.title('Rear tire lateral force vs slip angle')
-    # # plt.plot(alpha_r1, Y_r1)
-    # plt.plot(alpha_r2, Y_r2)
-    #
-    # plt.show()
 
 
 if __name__ == '__main__':
