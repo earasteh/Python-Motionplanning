@@ -11,7 +11,13 @@ import matplotlib.pyplot as plt
 class Path:
     def __init__(self, x, y, ds=0.05):
         self.ds = ds
-        self.px, self.py, self.pyaw, _ = generate_cubic_spline(x, y, ds)
+        self.px, self.py, self.pyaw, _ = generate_cubic_spline(x, y, self.ds)
+
+    def create_fromcsv(self, dir):
+        df = pd.read_csv(dir)
+        x = df['X-axis'].values
+        y = df['Y-axis'].values
+        self.px, self.py, self.pyaw, _ = generate_cubic_spline(x, y, self.ds)
 
 
 class Env:
@@ -27,7 +33,7 @@ class Env:
         # The middle of the road for motion planning purposes
         self.xm = []
         self.ym = []
-        #Initializing a path
+        # Initializing a path
         self.path = Path([0, 1], [0, 1], 0.05)
 
     def road_bound_add(self, xlist, ylist, side):
@@ -58,7 +64,7 @@ class Env:
         :param radius: radius
         :param arc: [0, 2*pi] gives a full-circle, [theta1, theta2] gives an arc with those specified initial and end angles
         :param ds:
-        :return:
+        :return: X, Y which are the list of x, y locations
         """
         if arc is None:
             arc = [0, 2 * np.pi]

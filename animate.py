@@ -298,8 +298,8 @@ def main():
 
         return outline, fr, rr, fl, rl, rear_axle, target,
 
-    # _ = FuncAnimation(fig, animate, frames=sim.frames, interval=interval, repeat=sim.loop)
-    # anim.save('animation.gif', writer='imagemagick', fps=50)
+    _ = FuncAnimation(fig, animate, frames=sim.frames, interval=interval, repeat=sim.loop)
+    # anim.save('resources/animation.gif', writer='imagemagick', fps=100)
     plt.show()
 
     plt.figure()
