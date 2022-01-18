@@ -13,7 +13,7 @@ from libs.stanley_controller import LongitudinalController
 from libs.car_description import Description
 from libs.cubic_spline_interpolator import generate_cubic_spline
 from collections import namedtuple
-from env import world  # Road definition
+from env import world  # Importing road definition
 
 
 class Simulation:
@@ -25,17 +25,6 @@ class Simulation:
         self.map_size = 40
         self.frames = 25000
         self.loop = False
-
-
-# alpha_f1 = alpha_r1 = Y_f1 = Y_r1 = []
-# alpha_f2 = alpha_r2 = Y_f2 = Y_r2 = []
-# DataLog = namedtuple('Log', 'time U V wz wFL wFR wRL wRR yaw x y '
-#                             'delta tau_FL tau_FR tau_RL tau_RR '
-#                             'sFL sFR sRL sRR '
-#                             'Fx_FL Fx_FR Fx_RL Fx_RR '
-#                             'Fy_FL Fy_FR Fy_RL Fy_RR '
-#                             'Fz_FL Fz_FR Fz_RL Fz_RR')
-# AllData = []
 
 log_time = [0]
 log_U = []
@@ -95,7 +84,7 @@ class Car:
         self.c_r = 0.01
         self.c_a = 2.0
 
-        # self.state = [init_vel, 0, 0, init_yaw, init_x, init_y]
+        # self.state = [init_vel, 0, 0, init_yaw, init_x, init_y] (these were for the bicycle model states)
         self.state = [init_vel, 0, 0, init_vel / p.rw, init_vel / p.rw, init_vel / p.rw, init_vel / p.rw, init_yaw,
                       init_x, init_y]
 
@@ -127,7 +116,7 @@ class Car:
         self.lateral_tracker = StanleyController(self.k, self.ksoft, self.kyaw, self.ksteer, self.max_steer,
                                                  self.wheelbase,
                                                  self.px, self.py, self.pyaw)
-        self.kbm = VehicleModel(self.wheelbase, self.max_steer, self.dt, self.c_r, self.c_a)
+        self.kbm = VehicleModel(self.wheelbase, self.max_steer, self.dt/10, self.c_r, self.c_a)
         self.long_tracker = LongitudinalController(self.k_v, self.k_i, self.k_d)
 
         # logged = DataLog(0, init_vel, 0, 0,
@@ -141,101 +130,72 @@ class Car:
         # AllData.append(logged)
 
     def drive(self):
-        # throttle = rand.uniform(0, 1)
-        # throttle = 0
+        # Motion Planner:
+
+        # Motion Controllers:
         self.delta, self.target_id, self.crosstrack_error = self.lateral_tracker.stanley_control(self.x, self.y,
                                                                                                  self.yaw,
                                                                                                  self.v, self.delta)
-        # self.x, self.y, self.yaw, self.v, _, _ = self.kbm.kinematic_model(self.state, self.y, self.yaw, self.v,
-        # throttle, self.delta) self.state = [5, 0, 0, init_yaw, init_x, init_y] _, _, _, _, _, _, _, outputs1 =
-        # self.kbm.bicycle_model('linear', self.state, self.delta, throttle) self.x, self.y, self.yaw, self.v, _, _,
-        # self.state, outputs1 = self.kbm.bicycle_model('linear', self.state, self.delta, throttle) self.x, self.y,
-        # self.yaw, self.v, _, _, self.state, outputs2 = self.kbm.bicycle_model('Dugoff', self.state, self.delta,
-        # throttle)
         self.total_vel_error, torque_vec = self.long_tracker.long_control(self.target_vel, self.v, self.prev_vel,
                                                                           self.total_vel_error, self.dt)
         self.prev_vel = self.v
-        state_dot, _, _, _, _, self.x, self.y, self.yaw, self.v, self.state, outputs = self.kbm.planar_model(self.state,
-                                                                                                             torque_vec,
-                                                                                                             [1.0, 1.0,
-                                                                                                              1.0,
-                                                                                                              1.0], [
-                                                                                                                 self.delta,
-                                                                                                                 self.delta,
-                                                                                                                 0, 0],
-                                                                                                             p)
+        # Vehicle model:
+        for i in range(10):
+            state_dot, _, _, _, _, outputs = self.kbm.planar_model(self.state, torque_vec, [1.0, 1.0, 1.0, 1.0],
+                                                                   [self.delta, self.delta, 0, 0], p)
+            self.state, self.x, self.y, self.yaw, self.v = self.kbm.planar_model_RK4(self.state, torque_vec,
+                                                                                     [1.0, 1.0, 1.0, 1.0],
+                                                                                     [self.delta, self.delta, 0, 0], p)
 
-        U, V, wz, wFL, wFR, wRL, wRR, yaw, x, y = self.state
-        U_dot, V_dot, wz_dot, wFL_dot, wFR_dot, wRL_dot, wRR_dot, yaw_dot, x_dot, y_dot = state_dot
-        fFLx, fFRx, fRLx, fRRx, fFLy, fFRy, fRLy, fRRy, fFLz, fFRz, fRLz, fRRz, sFL, sFR, sRL, sRR = outputs
+            U, V, wz, wFL, wFR, wRL, wRR, yaw, x, y = self.state
+            U_dot, V_dot, wz_dot, wFL_dot, wFR_dot, wRL_dot, wRR_dot, yaw_dot, x_dot, y_dot = state_dot
+            fFLx, fFRx, fRLx, fRRx, fFLy, fFRy, fRLy, fRRy, fFLz, fFRz, fRLz, fRRz, sFL, sFR, sRL, sRR = outputs
 
-        log_time.append(log_time[-1] + self.dt)
+            log_time.append(log_time[-1] + self.kbm.dt)
 
-        log_U.append(U)
-        log_V.append(V)
-        log_wz.append(wz)
+            log_U.append(U)
+            log_V.append(V)
+            log_wz.append(wz)
 
-        log_wFL.append(wFL)
-        log_wFR.append(wFR)
-        log_wRL.append(wRL)
-        log_wRR.append(wRR)
+            log_wFL.append(wFL)
+            log_wFR.append(wFR)
+            log_wRL.append(wRL)
+            log_wRR.append(wRR)
 
-        log_yaw.append(yaw)
-        log_x.append(x)
-        log_y.append(y)
+            log_yaw.append(yaw)
+            log_x.append(x)
+            log_y.append(y)
 
-        log_tau_FL.append(torque_vec[0])
-        log_tau_FR.append(torque_vec[1])
-        log_tau_RL.append(torque_vec[2])
-        log_tau_RR.append(torque_vec[3])
+            log_tau_FL.append(torque_vec[0])
+            log_tau_FR.append(torque_vec[1])
+            log_tau_RL.append(torque_vec[2])
+            log_tau_RR.append(torque_vec[3])
 
-        log_Fx_FL.append(fFLx)
-        log_Fx_FR.append(fFRx)
-        log_Fx_RL.append(fRLx)
-        log_Fx_RR.append(fRRx)
+            log_Fx_FL.append(fFLx)
+            log_Fx_FR.append(fFRx)
+            log_Fx_RL.append(fRLx)
+            log_Fx_RR.append(fRRx)
 
-        log_Fy_FL.append(fFLy)
-        log_Fy_FR.append(fFRy)
-        log_Fy_RL.append(fRLy)
-        log_Fy_RR.append(fRRy)
+            log_Fy_FL.append(fFLy)
+            log_Fy_FR.append(fFRy)
+            log_Fy_RL.append(fRLy)
+            log_Fy_RR.append(fRRy)
 
-        log_Fz_FL.append(fFLz)
-        log_Fz_FR.append(fFRz)
-        log_Fz_RL.append(fRLz)
-        log_Fz_RR.append(fRRz)
+            log_Fz_FL.append(fFLz)
+            log_Fz_FR.append(fFRz)
+            log_Fz_RL.append(fRLz)
+            log_Fz_RR.append(fRRz)
 
-        log_sFL.append(sFL)
-        log_sFR.append(sFR)
-        log_sRL.append(sRL)
-        log_sRR.append(sRR)
+            log_sFL.append(sFL)
+            log_sFR.append(sFR)
+            log_sRL.append(sRL)
+            log_sRR.append(sRR)
 
-        log_yaw_rate.append(yaw_dot)
-        log_latac.append(V_dot)
+            log_yaw_rate.append(yaw_dot)
+            log_latac.append(V_dot)
 
-        # logged = DataLog(AllData[-1].time+self.dt, U, V, wz,
-        #                  wFL, wFR, wRL, wRR,
-        #                  yaw, x, y,
-        #                  self.delta, torque_vec[0], torque_vec[1], torque_vec[2], torque_vec[3],
-        #                  sFL, sFR, sRL, sRR,
-        #                  fFLx, fFRx, fRLx, fRRx,
-        #                  fFLy, fFRy, fRLy, fRRy,
-        #                  fFLz, fFRz, fRLz, fRRz)
-        # AllData.append(logged)
-
-        # # Tire information - linear
-        # Y_f1.append(outputs1[0])
-        # Y_r1.append(outputs1[1])
-        # alpha_f1.append(outputs1[2])
-        # alpha_r1.append(outputs1[3])
-
-        # Tire information
-        # Y_f2.append(outputs2[0])
-        # Y_r2.append(outputs2[1])
-        # alpha_f2.append(outputs2[2])
-        # alpha_r2.append(outputs2[3])
-
-        os.system('cls' if os.name == 'nt' else 'clear')
-        print(f"Cross-track term: {self.crosstrack_error}")
+            os.system('cls' if os.name == 'nt' else 'clear')
+            print(f"Cross-track term: {self.crosstrack_error}")
 
 
 def main():
@@ -349,9 +309,6 @@ def main():
     plt.legend(['FL', 'FR', 'RL', 'RR'])
     plt.xlabel('Time (Sec.)')
     plt.ylabel('Wheel Torque (N.m)')
-
-
-
 
     plt.show()
 

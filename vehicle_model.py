@@ -375,7 +375,7 @@ class VehicleModel:
         x_dot = U * cos(yaw) - V * sin(yaw)
         y_dot = U * sin(yaw) + V * cos(yaw)
 
-        state_dot = [U_dot, V_dot, wz_dot, wFL_dot, wFR_dot, wRL_dot, wRR_dot, yaw_dot, x_dot, y_dot]
+        state_dot = np.array([U_dot, V_dot, wz_dot, wFL_dot, wFR_dot, wRL_dot, wRR_dot, yaw_dot, x_dot, y_dot])
 
         # Velocities at the wheel contact patch in the global inertial frame
         vFLxg = vFLxc * cos(yaw) - vFLyc * sin(yaw)
@@ -411,36 +411,40 @@ class VehicleModel:
 
         # Integration
 
-        U += U_dot * self.dt
-        V += V_dot * self.dt
-        wz += wz_dot * self.dt
-        wFL += wFL_dot * self.dt
-        wFR += wFR_dot * self.dt
-        wRL += wRL_dot * self.dt
-        wRR += wRR_dot * self.dt
-        yaw += yaw_dot * self.dt
-        x += x_dot * self.dt
-        y += y_dot * self.dt
+        # U += U_dot * self.dt
+        # V += V_dot * self.dt
+        # wz += wz_dot * self.dt
+        # wFL += wFL_dot * self.dt
+        # wFR += wFR_dot * self.dt
+        # wRL += wRL_dot * self.dt
+        # wRR += wRR_dot * self.dt
+        # yaw += yaw_dot * self.dt
+        # x += x_dot * self.dt
+        # y += y_dot * self.dt
 
         yaw = normalise_angle(yaw)
-        state_update = [U, V, wz, wFL, wFR, wRL, wRR, yaw, x, y]
+        # state_update = [U, V, wz, wFL, wFR, wRL, wRR, yaw, x, y]
         outputs = [fFLx, fFRx, fRLx, fRRx,
                    fFLy, fFRy, fRLy, fRRy,
                    fFLz, fFRz, fRLz, fRRz,
                    sFL, sFR, sRL, sRR]
 
-        return [state_dot, vx, vy, ax, ay, x, y, yaw, U, state_update, outputs]
-        # return [state_dot, vx, vy, ax, ay, x, y, yaw, U, outputs]
+        # return [state_dot, vx, vy, ax, ay, x, y, yaw, U, state_update, outputs]
+        return [state_dot, vx, vy, ax, ay, outputs]
 
     def planar_model_RK4(self, state, tire_torques, mu_max, delta, p):
         h = self.dt
-        state_dot0, _, _, _, _, _, _, _, _, _, _ = self.planar_model(state, tire_torques, mu_max, delta, p)
-        K1 = h * state_dot0
-        tire_torques[:] = [x - K1 * h / 2 for x in tire_torques]
+        K1, _, _, _, _, _ = self.planar_model(state, tire_torques, mu_max, delta, p)
+        K2, _, _, _, _, _ = self.planar_model(np.array(state) + h / 2 * K1, tire_torques, mu_max, delta, p)
+        K3, _, _, _, _, _ = self.planar_model(np.array(state) + h / 2 * K2, tire_torques, mu_max, delta, p)
+        K4, _, _, _, _, _ = self.planar_model(np.array(state) + h * K3, tire_torques,mu_max, delta, p)
 
-        state_dot0, _, _, _, _, _, _, _, _, _, _ = self.planar_model(state, tire_torques, mu_max, delta, p)
+        # [U_dot, V_dot, wz_dot, wFL_dot, wFR_dot, wRL_dot, wRR_dot, yaw_dot, x_dot, y_dot]
 
-        return 0
+        state_update = state + 1 / 6 * h * (K1 + 2 * K2 + 2 * K3 + K4)
+        U, V, wz, wFL, wFR, wRL, wRR, yaw, x, y = state_update
+
+        return [state_update, x, y, yaw, U]
 
 
 def planar_integrate(t, state, tire_torques, mu_max, delta, p):
