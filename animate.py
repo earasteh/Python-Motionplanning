@@ -12,9 +12,8 @@ from libs.stanley_controller import StanleyController
 from libs.stanley_controller import LongitudinalController
 from libs.car_description import Description
 from libs.cubic_spline_interpolator import generate_cubic_spline
-from collections import namedtuple
 from env import world  # Importing road definition
-
+from motionplanner.local_planner_ehsan import LocalPlanner, get_closest_index
 
 class Simulation:
 
@@ -69,12 +68,12 @@ class Car:
 
     def __init__(self, init_x, init_y, init_yaw, px, py, pyaw, dt):
         # Model parameters
-        init_vel = 15.0
+        init_vel = 35.0
         self.x = init_x
         self.y = init_y
         self.yaw = init_yaw
         self.prev_vel = self.v = init_vel
-        self.target_vel = 15.0
+        self.target_vel = 35.0
         self.total_vel_error = 0
         self.delta = 0.0
         self.omega = 0.0
@@ -92,7 +91,7 @@ class Car:
         self.px = px
         self.py = py
         self.pyaw = pyaw
-        self.k = 8.0 * 5
+        self.k = 8.0 * 3
         self.ksoft = 1.0
         self.kyaw = 0.01
         self.ksteer = 0
@@ -113,10 +112,11 @@ class Car:
         self.rear_overhang = (self.overall_length - self.wheelbase) / 2
         self.colour = 'black'
 
+        self.local_motion_planner = LocalPlanner(10, 3, 1, 1, 1, 1, 1, 1, 1, 1)
         self.lateral_tracker = StanleyController(self.k, self.ksoft, self.kyaw, self.ksteer, self.max_steer,
                                                  self.wheelbase,
                                                  self.px, self.py, self.pyaw)
-        self.kbm = VehicleModel(self.wheelbase, self.max_steer, self.dt/10, self.c_r, self.c_a)
+        self.kbm = VehicleModel(self.wheelbase, self.max_steer, self.dt, self.c_r, self.c_a)
         self.long_tracker = LongitudinalController(self.k_v, self.k_i, self.k_d)
 
         # logged = DataLog(0, init_vel, 0, 0,
@@ -131,6 +131,8 @@ class Car:
 
     def drive(self):
         # Motion Planner:
+        # closest_len, closest_index = get_closest_index([self.px, self.py], [self.x, self.y])
+
 
         # Motion Controllers:
         self.delta, self.target_id, self.crosstrack_error = self.lateral_tracker.stanley_control(self.x, self.y,
@@ -231,6 +233,7 @@ def main():
 
     plt.grid()
 
+
     def animate(frame):
         # Camera tracks car
         ax.set_xlim(car.x - sim.map_size, car.x + sim.map_size)
@@ -312,6 +315,7 @@ def main():
 
     plt.show()
 
+    print(np.array([car.px, car.py]))
 
 if __name__ == '__main__':
     main()
