@@ -13,7 +13,7 @@ from libs.stanley_controller import LongitudinalController
 from libs.car_description import Description
 from libs.cubic_spline_interpolator import generate_cubic_spline
 from env import world  # Importing road definition
-from motionplanner.local_planner_ehsan import LocalPlanner, get_closest_index
+from motionplanner.local_planner_ehsan import LocalPlanner, get_closest_index, motionplanner_datatranslation
 
 class Simulation:
 
@@ -68,12 +68,12 @@ class Car:
 
     def __init__(self, init_x, init_y, init_yaw, px, py, pyaw, dt):
         # Model parameters
-        init_vel = 35.0
+        init_vel = 15.0
         self.x = init_x
         self.y = init_y
         self.yaw = init_yaw
         self.prev_vel = self.v = init_vel
-        self.target_vel = 35.0
+        self.target_vel = 15.0
         self.total_vel_error = 0
         self.delta = 0.0
         self.omega = 0.0
@@ -119,20 +119,14 @@ class Car:
         self.kbm = VehicleModel(self.wheelbase, self.max_steer, self.dt, self.c_r, self.c_a)
         self.long_tracker = LongitudinalController(self.k_v, self.k_i, self.k_d)
 
-        # logged = DataLog(0, init_vel, 0, 0,
-        #                  init_vel / p.rw, init_vel / p.rw, init_vel / p.rw, init_vel / p.rw,
-        #                  0, self.x, self.y,
-        #                  0, 0, 0, 0, 0,
-        #                  0, 0, 0, 0,
-        #                  0, 0, 0, 0,
-        #                  0, 0, 0, 0,
-        #                  p.m/4, p.m/4, p.m/4, p.m/4)
-        # AllData.append(logged)
-
     def drive(self):
         # Motion Planner:
-        # closest_len, closest_index = get_closest_index([self.px, self.py], [self.x, self.y])
-
+        waypoints, ego_state = motionplanner_datatranslation(self.px, self.py, self.target_vel,
+                                                                         self.x, self.y, self.yaw, self.v)
+        closest_len, closest_index = get_closest_index(waypoints, ego_state)
+        goal_index = self.local_motion_planner.get_goal_index(waypoints, ego_state, closest_len, closest_index)
+        goal_state = waypoints[goal_index]
+        goal_state_set = self.local_motion_planner.get_goal_state_set(goal_index, goal_state, waypoints, ego_state)
 
         # Motion Controllers:
         self.delta, self.target_id, self.crosstrack_error = self.lateral_tracker.stanley_control(self.x, self.y,
@@ -252,6 +246,7 @@ def main():
         # Show car's target
         target.set_data(path.px[car.target_id], path.py[car.target_id])
 
+
         # Annotate car's coordinate above car
         annotation.set_text(f'{car.x:.1f}, {car.y:.1f}')
         annotation.set_position((car.x, car.y + 5))
@@ -262,7 +257,7 @@ def main():
         return outline, fr, rr, fl, rl, rear_axle, target,
 
     _ = FuncAnimation(fig, animate, frames=sim.frames, interval=interval, repeat=sim.loop)
-    # anim.save('resources/animation.gif', writer='imagemagick', fps=100)
+    #anim.save('resources/animation.gif', fps=100)   #Uncomment to save the animation
     plt.show()
 
     plt.figure()
@@ -313,9 +308,7 @@ def main():
     plt.xlabel('Time (Sec.)')
     plt.ylabel('Wheel Torque (N.m)')
 
-    plt.show()
-
-    print(np.array([car.px, car.py]))
+    # plt.show()
 
 if __name__ == '__main__':
     main()

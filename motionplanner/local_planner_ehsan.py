@@ -12,11 +12,31 @@ from motionplanner import collision_checker
 from motionplanner import velocity_planner
 from math import sin, cos, pi, sqrt
 
+def motionplanner_datatranslation(px, py, target_vel, x, y, yaw, v):
+    """
+    This helper function helps translating the differences between the data in the vehicle model program vs.
+    the motion planner written by the coursera guys
+    :param px:
+    :param py:
+    :param target_vel:
+    :param x:
+    :param y:
+    :param yaw:
+    :param v:
+    :return:
+    """
+
+    waypoints = []
+    ego_state = [x, y, yaw, v]
+
+    for i, x_r in enumerate(px):
+        waypoints.append([x_r, py[i], target_vel])
+
+    return waypoints, ego_state
+
+
 # Compute the waypoint index that is closest to the ego vehicle, and return
 # it as well as the distance from the ego vehicle to that waypoint.
-
-
-
 def get_closest_index(waypoints, ego_state):
     """Gets closest index a given list of waypoints to the vehicle position.
 
@@ -231,7 +251,6 @@ class LocalPlanner:
 
         # Compute the goal yaw in the local frame by subtracting off the
         # current ego yaw from the heading variable.
-        # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
         # ------------------------------------------------------------------
         goal_t = heading - ego_state[2]
         # ------------------------------------------------------------------
@@ -258,7 +277,6 @@ class LocalPlanner:
             # Compute the projection of the lateral offset along the x
             # and y axis. To do this, multiply the offset by cos(goal_theta + pi/2)
             # and sin(goal_theta + pi/2), respectively.
-            # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
             # ------------------------------------------------------------------
             x_offset = offset * np.cos(goal_t + pi / 2)
             y_offset = offset * np.sin(goal_t + pi / 2)
