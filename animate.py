@@ -13,7 +13,7 @@ from libs.stanley_controller import LongitudinalController
 from libs.car_description import Description
 from libs.cubic_spline_interpolator import generate_cubic_spline
 from env import world  # Importing road definition
-from motionplanner.local_planner_ehsan import LocalPlanner, get_closest_index, motionplanner_datatranslation
+from motionplanner.local_planner_ehsan import LocalPlanner, get_closest_index, motionplanner_datatranslation, transform_paths
 
 class Simulation:
 
@@ -22,7 +22,7 @@ class Simulation:
 
         self.dt = 1 / fps
         self.map_size = 40
-        self.frames = 25000
+        self.frames = 250
         self.loop = False
 
 log_time = [0]
@@ -91,7 +91,7 @@ class Car:
         self.px = px
         self.py = py
         self.pyaw = pyaw
-        self.k = 8.0 * 3
+        self.k = 8.0
         self.ksoft = 1.0
         self.kyaw = 0.01
         self.ksteer = 0
@@ -112,7 +112,7 @@ class Car:
         self.rear_overhang = (self.overall_length - self.wheelbase) / 2
         self.colour = 'black'
 
-        self.local_motion_planner = LocalPlanner(10, 3, 1, 1, 1, 1, 1, 1, 1, 1)
+        self.local_motion_planner = LocalPlanner(10, 5, 1.5, 1, 1, 1, 1, 1, 1, 1)
         self.lateral_tracker = StanleyController(self.k, self.ksoft, self.kyaw, self.ksteer, self.max_steer,
                                                  self.wheelbase,
                                                  self.px, self.py, self.pyaw)
@@ -127,6 +127,8 @@ class Car:
         goal_index = self.local_motion_planner.get_goal_index(waypoints, ego_state, closest_len, closest_index)
         goal_state = waypoints[goal_index]
         goal_state_set = self.local_motion_planner.get_goal_state_set(goal_index, goal_state, waypoints, ego_state)
+        paths, path_validity = self.local_motion_planner.plan_paths(goal_state_set)
+        paths = transform_paths(paths, ego_state)
 
         # Motion Controllers:
         self.delta, self.target_id, self.crosstrack_error = self.lateral_tracker.stanley_control(self.x, self.y,
@@ -192,6 +194,7 @@ class Car:
 
             os.system('cls' if os.name == 'nt' else 'clear')
             print(f"Cross-track term: {self.crosstrack_error}")
+        return paths
 
 
 def main():
@@ -217,6 +220,11 @@ def main():
 
     annotation = ax.annotate(f'{car.x:.1f}, {car.y:.1f}', xy=(car.x, car.y + 5), color='black', annotation_clip=False)
     target, = ax.plot([], [], '+r')
+    CLP1, = ax.plot([], [], 'g-.', color='green')
+    CLP2, = ax.plot([], [], 'g-.', color='green')
+    CLP3, = ax.plot([], [], 'g-.', color='green')
+    CLP4, = ax.plot([], [], 'g-.', color='green')
+    CLP5, = ax.plot([], [], 'g-.', color='green')
 
     outline, = ax.plot([], [], color=car.colour)
     fr, = ax.plot([], [], color=car.colour)
@@ -234,7 +242,9 @@ def main():
         ax.set_ylim(car.y - sim.map_size, car.y + sim.map_size)
 
         # Drive and draw car
-        car.drive()
+        paths = car.drive()
+        paths = np.array(paths)
+        # print(paths[0, :, :])
 
         outline_plot, fr_plot, rr_plot, fl_plot, rl_plot = desc.plot_car(car.x, car.y, car.yaw, car.delta)
         outline.set_data(*outline_plot)
@@ -246,6 +256,12 @@ def main():
         # Show car's target
         target.set_data(path.px[car.target_id], path.py[car.target_id])
 
+        CLP1.set_data(paths[-2, 0, :], paths[-2, 1, :])
+        CLP2.set_data(paths[-1, 0, :], paths[-1, 1, :])
+        CLP3.set_data(paths[0, 0, :], paths[0, 1, :])
+        CLP4.set_data(paths[1, 0, :], paths[1, 1, :])
+        CLP5.set_data(paths[2, 0, :], paths[2, 1, :])
+
 
         # Annotate car's coordinate above car
         annotation.set_text(f'{car.x:.1f}, {car.y:.1f}')
@@ -254,10 +270,10 @@ def main():
         plt.xlabel(f'Speed: {car.v:.2f} m/s', loc='left')
         # plt.savefig(f'fig/visualisation_{frame:04}.png')
 
-        return outline, fr, rr, fl, rl, rear_axle, target,
+        return outline, fr, rr, fl, rl, rear_axle, target, CLP1, CLP2, CLP3, CLP4, CLP5
 
     _ = FuncAnimation(fig, animate, frames=sim.frames, interval=interval, repeat=sim.loop)
-    #anim.save('resources/animation.gif', fps=100)   #Uncomment to save the animation
+    # anim.save('resources/animation.gif', fps=100)   #Uncomment to save the animation
     plt.show()
 
     plt.figure()

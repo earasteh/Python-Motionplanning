@@ -288,3 +288,101 @@ class LocalPlanner:
                                    goal_v])
 
         return goal_state_set
+
+    def plan_paths(self, goal_state_set):
+        """Plans the path set using the polynomial spiral optimization.
+
+        Plans the path set using polynomial spiral optimization to each of the
+        goal states.
+
+        args:
+            goal_state_set: Set of goal states (offsetted laterally from one
+                another) to be used by the local planner to plan multiple
+                proposal paths. These goals are with respect to the vehicle
+                frame.
+                format: [[x0, y0, t0, v0],
+                         [x1, y1, t1, v1],
+                         ...
+                         [xm, ym, tm, vm]]
+                , where m is the total number of goal states
+                  [x, y, t] are the position and yaw values at each goal
+                  v is the goal speed at the goal point.
+                  all units are in m, m/s and radians
+        returns:
+            paths: A list of optimized spiral paths which satisfies the set of
+                goal states. A path is a list of points of the following format:
+                    [x_points, y_points, t_points]:
+                        x_points: List of x values (m) along the spiral
+                        y_points: List of y values (m) along the spiral
+                        t_points: List of yaw values (rad) along the spiral
+                    Example of accessing the ith path, jth point's t value:
+                        paths[i][2][j]
+                Note that this path is in the vehicle frame, since the
+                optimize_spiral function assumes this to be the case.
+            path_validity: List of booleans classifying whether a path is valid
+                (true) or not (false) for the local planner to traverse. Each ith
+                path_validity corresponds to the ith path in the path list.
+        """
+        paths = []
+        path_validity = []
+        for goal_state in goal_state_set:
+            path = self._path_optimizer.optimize_spiral(goal_state[0],
+                                                        goal_state[1],
+                                                        goal_state[2])
+            if np.linalg.norm([path[0][-1] - goal_state[0],
+                               path[1][-1] - goal_state[1],
+                               path[2][-1] - goal_state[2]]) > 0.1:
+                path_validity.append(False)
+            else:
+                paths.append(path)
+                path_validity.append(True)
+
+        return paths, path_validity
+
+def transform_paths(paths, ego_state):
+    """ Converts the to the global coordinate frame.
+
+    Converts the paths from the local (vehicle) coordinate frame to the
+    global coordinate frame.
+
+    args:
+        paths: A list of paths in the local (vehicle) frame.
+            A path is a list of points of the following format:
+                [x_points, y_points, t_points]:
+                    , x_points: List of x values (m)
+                    , y_points: List of y values (m)
+                    , t_points: List of yaw values (rad)
+                Example of accessing the ith path, jth point's t value:
+                    paths[i][2][j]
+        ego_state: ego state vector for the vehicle, in the global frame.
+            format: [ego_x, ego_y, ego_yaw, ego_open_loop_speed]
+                ego_x and ego_y     : position (m)
+                ego_yaw             : top-down orientation [-pi to pi]
+                ego_open_loop_speed : open loop speed (m/s)
+    returns:
+        transformed_paths: A list of transformed paths in the global frame.
+            A path is a list of points of the following format:
+                [x_points, y_points, t_points]:
+                    , x_points: List of x values (m)
+                    , y_points: List of y values (m)
+                    , t_points: List of yaw values (rad)
+                Example of accessing the ith transformed path, jth point's
+                y value:
+                    paths[i][1][j]
+    """
+    transformed_paths = []
+    for path in paths:
+        x_transformed = []
+        y_transformed = []
+        t_transformed = []
+
+        for i in range(len(path[0])):
+            x_transformed.append(ego_state[0] + path[0][i] * cos(ego_state[2]) - \
+                                 path[1][i] * sin(ego_state[2]))
+            y_transformed.append(ego_state[1] + path[0][i] * sin(ego_state[2]) + \
+                                 path[1][i] * cos(ego_state[2]))
+            t_transformed.append(path[2][i] + ego_state[2])
+
+        transformed_paths.append([x_transformed, y_transformed, t_transformed])
+
+    return transformed_paths

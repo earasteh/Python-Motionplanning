@@ -75,7 +75,8 @@ for i, lam in enumerate(lamda_f):
 # # plt.plot(alpha_f1, Y_f1)
 # plt.plot(alpha_f, Y_f)
 # plt.show()
-px = [1, 2, 3, 4]
-py = [4, 5, 6, 6]
 
-loc = [px, py]
+
+xp = np.array([[9, -1, -0.2, 15.0], [12, -3, -4, 160], [13, 14, 17, 21]])
+
+print(xp[:, 0:2])
