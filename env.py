@@ -35,6 +35,10 @@ class Env:
         self.ym = []
         # Initializing a path
         self.path = Path([0, 1], [0, 1], 0.05)
+        # Obstacles
+        self.obstacle_x = []
+        self.obstacle_y = []
+        self.obstacle_xy = []
 
     def road_bound_add(self, xlist, ylist, side):
         if side == 'right':
@@ -50,6 +54,16 @@ class Env:
         self.xm = (np.asarray(self.bound_xr) + np.asarray(self.bound_xl)) / 2
         self.ym = (np.asarray(self.bound_yr) + np.asarray(self.bound_yl)) / 2
         self.path = Path(self.xm, self.ym, 0.05)
+
+    def obstacle_add(self, xlist, ylist):
+        self.obstacle_x += xlist
+        self.obstacle_y += ylist
+        xy = []
+
+        for i in range(len(xlist)):
+            xy.append([xlist[i], ylist[i]])
+
+        self.obstacle_xy = xy
 
     @staticmethod
     def strightline(x_start, x_end, y, ds):
@@ -73,6 +87,44 @@ class Env:
         xc, yc = center
         X = [radius * np.cos(t) + xc for t in np.arange(theta1, theta2 + ds, ds)]
         Y = [radius * np.sin(t) + yc for t in np.arange(theta1, theta2 + ds, ds)]
+        return X, Y
+
+    @staticmethod
+    def box(corner, width, length, ds):
+        """
+        Creates a box
+        :param corner:
+        :param width:
+        :param length:
+        :param ds:
+        :return:
+        """
+
+        xc1, yc1 = corner
+        xc2 = xc1 + length
+        yc2 = yc1 + width
+
+        X = []
+        Y = []
+
+        x1, y1 = Env.strightline(xc1, xc2, yc1, ds)
+        X += x1
+        Y += y1
+
+        y2 = [y for y in np.arange(yc1, yc2, ds)]
+        x2 = [xc2] * len(y2)
+        X += x2
+        Y += y2
+
+        x3, y3 = Env.strightline(xc2, xc1, yc2, -ds)
+        X += x3
+        Y += y3
+
+        y4 = [y for y in np.arange(yc1, yc2, ds)]
+        x4 = [xc1] * len(y4)
+        X += x4
+        Y += y4
+
         return X, Y
 
     # @staticmethod
@@ -126,6 +178,10 @@ world.road_bound_add(x4, y4, 'left')
 # find the middle of the road
 world.road_middle()
 
+# Construct an obstacle
+xo, yo = Env.box([80, 7], 6, 5, 0.01)
+world.obstacle_add(xo, yo)
+
 
 def main():
     plt.figure()
@@ -133,8 +189,11 @@ def main():
     plt.plot(world.bound_xr, world.bound_yr)
     plt.plot(world.bound_xl, world.bound_yl)
     plt.plot(world.xm, world.ym, linestyle='dashed', color='green')
+    plt.fill(world.obstacle_x, world.obstacle_y, color='red')
     plt.axis('equal')
     plt.show()
+
+    print(type(np.array(world.obstacle_xy)))
 
 
 if __name__ == "__main__":

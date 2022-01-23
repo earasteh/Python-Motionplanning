@@ -6,6 +6,7 @@
 # Author: Ryan De Iaco
 # Additional Comments: Carlos Wang
 # Date: October 29, 2018
+import time
 
 import numpy as np
 import scipy.spatial
@@ -55,6 +56,7 @@ class CollisionChecker:
                 ith path in the paths list.
         """
         collision_check_array = np.zeros(len(paths), dtype=bool)
+
         for i in range(len(paths)):
             collision_free = True
             path = paths[i]
@@ -92,7 +94,9 @@ class CollisionChecker:
                 # if any of the obstacle points lies within any of our circles.
                 # If so, then the path will collide with an obstacle and
                 # the collision_free flag should be set to false for this flag
+
                 for obstacle_points in obstacles:
+                    obstacle_points = [obstacle_points]
                     collision_dists = \
                         scipy.spatial.distance.cdist(obstacle_points,
                                                      circle_locations)
@@ -103,6 +107,8 @@ class CollisionChecker:
 
                     if not collision_free:
                         break
+
+
                 if not collision_free:
                     break
 

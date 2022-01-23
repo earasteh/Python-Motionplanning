@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import random as rand
+import time
 
 from vehicle_model import VehicleModel
 from vehicle_model import VehicleParameters
@@ -13,7 +14,9 @@ from libs.stanley_controller import LongitudinalController
 from libs.car_description import Description
 from libs.cubic_spline_interpolator import generate_cubic_spline
 from env import world  # Importing road definition
-from motionplanner.local_planner_ehsan import LocalPlanner, get_closest_index, motionplanner_datatranslation, transform_paths
+from motionplanner.local_planner_ehsan import LocalPlanner, get_closest_index, motionplanner_datatranslation, \
+    transform_paths
+
 
 class Simulation:
 
@@ -22,8 +25,9 @@ class Simulation:
 
         self.dt = 1 / fps
         self.map_size = 40
-        self.frames = 250
+        self.frames = 25000
         self.loop = False
+
 
 log_time = [0]
 log_U = []
@@ -63,6 +67,29 @@ log_latac = []
 
 p = VehicleParameters()
 
+## Motion planner constants
+NUM_PATHS = 7
+BP_LOOKAHEAD_BASE = 8.0  # m
+BP_LOOKAHEAD_TIME = 2.0  # s
+PATH_OFFSET = 1.5  # m
+CIRCLE_OFFSETS = [-1.0, 1.0, 3.0]  # m
+CIRCLE_RADII = [1.5, 1.5, 1.5]  # m
+TIME_GAP = 1.0  # s
+PATH_SELECT_WEIGHT = 10
+A_MAX = 1.5  # m/s^2
+SLOW_SPEED = 2.0  # m/s
+STOP_LINE_BUFFER = 3.5  # m
+LEAD_VEHICLE_LOOKAHEAD = 20.0  # m
+LP_FREQUENCY_DIVISOR = 2  # Frequency divisor to make the
+
+LOOKAHEAD = 10
+
+
+# local planner operate at a lower
+# frequency than the controller
+# (which operates at the simulation
+# frequency). Must be a natural
+# number.
 
 class Car:
 
@@ -112,7 +139,16 @@ class Car:
         self.rear_overhang = (self.overall_length - self.wheelbase) / 2
         self.colour = 'black'
 
-        self.local_motion_planner = LocalPlanner(10, 5, 1.5, 1, 1, 1, 1, 1, 1, 1)
+        self.local_motion_planner = LocalPlanner(LOOKAHEAD,
+                                                 NUM_PATHS,
+                                                 PATH_OFFSET,
+                                                 CIRCLE_OFFSETS,
+                                                 CIRCLE_RADII,
+                                                 PATH_SELECT_WEIGHT,
+                                                 TIME_GAP,
+                                                 A_MAX,
+                                                 SLOW_SPEED,
+                                                 STOP_LINE_BUFFER)
         self.lateral_tracker = StanleyController(self.k, self.ksoft, self.kyaw, self.ksteer, self.max_steer,
                                                  self.wheelbase,
                                                  self.px, self.py, self.pyaw)
@@ -120,17 +156,20 @@ class Car:
         self.long_tracker = LongitudinalController(self.k_v, self.k_i, self.k_d)
 
     def drive(self):
-        # Motion Planner:
+        ## Motion Planner:
         waypoints, ego_state = motionplanner_datatranslation(self.px, self.py, self.target_vel,
-                                                                         self.x, self.y, self.yaw, self.v)
+                                                             self.x, self.y, self.yaw, self.v)
         closest_len, closest_index = get_closest_index(waypoints, ego_state)
         goal_index = self.local_motion_planner.get_goal_index(waypoints, ego_state, closest_len, closest_index)
         goal_state = waypoints[goal_index]
         goal_state_set = self.local_motion_planner.get_goal_state_set(goal_index, goal_state, waypoints, ego_state)
         paths, path_validity = self.local_motion_planner.plan_paths(goal_state_set)
         paths = transform_paths(paths, ego_state)
+        collision_check_array = self.local_motion_planner._collision_checker.collision_check(paths, np.array(world.obstacle_xy))
+        # Compute the best local path.
+        # best_index = self.local_motion_planner._collision_checker.select_best_path_index(paths, collision_check_array, goal_state)
 
-        # Motion Controllers:
+        ## Motion Controllers:
         self.delta, self.target_id, self.crosstrack_error = self.lateral_tracker.stanley_control(self.x, self.y,
                                                                                                  self.yaw,
                                                                                                  self.v, self.delta)
@@ -212,19 +251,22 @@ def main():
     ax.set_aspect('equal')
 
     # road = plt.Circle((0, 0), 50, color='gray', fill=False, linewidth=30)
-    road = plt.fill(np.append(world.bound_xr, world.bound_xl[::-1]), np.append(world.bound_yr, world.bound_yl[::-1]),
+    _ = plt.fill(np.append(world.bound_xr, world.bound_xl[::-1]), np.append(world.bound_yr, world.bound_yl[::-1]),
                     color='gray')
     ax.plot(world.bound_xl, world.bound_yl, color='black')
     ax.plot(world.bound_xr, world.bound_yr, color='black')
+    _ = plt.fill(world.obstacle_x, world.obstacle_y, color='red')
+
     ax.plot(path.px, path.py, '--', color='gold')
 
     annotation = ax.annotate(f'{car.x:.1f}, {car.y:.1f}', xy=(car.x, car.y + 5), color='black', annotation_clip=False)
     target, = ax.plot([], [], '+r')
-    CLP1, = ax.plot([], [], 'g-.', color='green')
-    CLP2, = ax.plot([], [], 'g-.', color='green')
-    CLP3, = ax.plot([], [], 'g-.', color='green')
-    CLP4, = ax.plot([], [], 'g-.', color='green')
-    CLP5, = ax.plot([], [], 'g-.', color='green')
+
+    CLP1, = ax.plot([], [], 'g-.')
+    CLP2, = ax.plot([], [], 'g-.')
+    CLP3, = ax.plot([], [], 'g-.')
+    CLP4, = ax.plot([], [], 'g-.')
+    CLP5, = ax.plot([], [], 'g-.')
 
     outline, = ax.plot([], [], color=car.colour)
     fr, = ax.plot([], [], color=car.colour)
@@ -235,7 +277,6 @@ def main():
 
     plt.grid()
 
-
     def animate(frame):
         # Camera tracks car
         ax.set_xlim(car.x - sim.map_size, car.x + sim.map_size)
@@ -244,7 +285,6 @@ def main():
         # Drive and draw car
         paths = car.drive()
         paths = np.array(paths)
-        # print(paths[0, :, :])
 
         outline_plot, fr_plot, rr_plot, fl_plot, rl_plot = desc.plot_car(car.x, car.y, car.yaw, car.delta)
         outline.set_data(*outline_plot)
@@ -261,7 +301,6 @@ def main():
         CLP3.set_data(paths[0, 0, :], paths[0, 1, :])
         CLP4.set_data(paths[1, 0, :], paths[1, 1, :])
         CLP5.set_data(paths[2, 0, :], paths[2, 1, :])
-
 
         # Annotate car's coordinate above car
         annotation.set_text(f'{car.x:.1f}, {car.y:.1f}')
@@ -325,6 +364,7 @@ def main():
     plt.ylabel('Wheel Torque (N.m)')
 
     # plt.show()
+
 
 if __name__ == '__main__':
     main()
