@@ -45,6 +45,13 @@ class StanleyController:
         self.py = path_y
         self.pyaw = path_yaw
 
+    def update_waypoints(self, waypoints):
+        self.px = []
+        self.py = []
+        for i in range(len(waypoints)):
+            self.px.append(waypoints[i][0])
+            self.py.append(waypoints[i][1])
+
     def find_target_path_id(self, x, y, yaw):
         # Calculate position of the front axle
         fx = x + self.L * np.cos(yaw)
