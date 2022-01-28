@@ -34,7 +34,7 @@ Control_SIM_NUM = Veh_SIM_NUM / 10
 class Simulation:
 
     def __init__(self):
-        fps = 100.0
+        fps = 10.0
 
         self.frame_dt = 1 / fps
         self.veh_dt = self.frame_dt / Veh_SIM_NUM
@@ -111,6 +111,7 @@ class Car:
         self.ksteer = 0
         self.crosstrack_error = None
         self.target_id = None
+        self.x_del = [0]
 
         # Longitudinal Tracker parameters
         self.k_v = 1000
@@ -209,6 +210,11 @@ class Car:
                                                                                        self.prev_vel,
                                                                                        self.total_vel_error, self.dt)
                 self.prev_vel = self.v
+
+                # Filter the delta output
+                self.x_del.append((1 - 0.00001 / 0.001) * self.x_del[-1] + 0.00001 / 0.001 * self.delta)
+                self.delta = self.x_del[-1]
+
             ## Vehicle model
             self.state, self.x, self.y, self.yaw, self.v, state_dot, outputs = self.kbm.planar_model_RK4(self.state,
                                                                                                          self.torque_vec,
@@ -228,13 +234,6 @@ class Car:
                                                    sFL, sFR, sRL, sRR, fFLx, fFRx, fRLx, fRRx, fFLy, fFRy, fRLy, fRRy,
                                                    fFLz,
                                                    fFRz, fRLz, fRRz, yaw_dot, V_dot, self.crosstrack_error]
-
-            # DataLog_pd.loc[frame * Veh_SIM_NUM + i, :] = [(frame * Veh_SIM_NUM + i) * self.kbm.dt, U, V, wz,
-            #                                        wFL, wFR, wRL, wRR, yaw, x, y, self.delta,
-            #                                        self.torque_vec[0], self.torque_vec[1], self.torque_vec[2],
-            #                                        self.torque_vec[3],
-            #                                        sFL, sFR, sRL, sRR, fFLx, fFRx, fRLx, fRRx, fFLy, fFRy, fRLy, fRRy,
-            #                                        fFLz,fFRz, fRLz, fRRz, yaw_dot, V_dot, self.crosstrack_error]
 
         os.system('cls' if os.name == 'nt' else 'clear')
         print(f"Cross-track term: {self.crosstrack_error}")
