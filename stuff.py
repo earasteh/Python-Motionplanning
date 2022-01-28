@@ -76,6 +76,4 @@ for i, lam in enumerate(lamda_f):
 # plt.plot(alpha_f, Y_f)
 # plt.show()
 
-
-xp = np.array([[9, -1, -0.2, 15.0], [12, -3, -4, 160], [13, 14, 17, 21]])
-
+# xp = np.array([[9, -1, -0.2, 15.0], [12, -3, -4, 160], [13, 14, 17, 21]])

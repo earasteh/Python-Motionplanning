@@ -424,27 +424,29 @@ class VehicleModel:
 
         yaw = normalise_angle(yaw)
         # state_update = [U, V, wz, wFL, wFR, wRL, wRR, yaw, x, y]
-        outputs = [fFLx, fFRx, fRLx, fRRx,
+        outputs = np.array([fFLx, fFRx, fRLx, fRRx,
                    fFLy, fFRy, fRLy, fRRy,
                    fFLz, fFRz, fRLz, fRRz,
-                   sFL, sFR, sRL, sRR]
+                   sFL, sFR, sRL, sRR])
 
         # return [state_dot, vx, vy, ax, ay, x, y, yaw, U, state_update, outputs]
         return [state_dot, vx, vy, ax, ay, outputs]
 
     def planar_model_RK4(self, state, tire_torques, mu_max, delta, p):
         h = self.dt
-        K1, _, _, _, _, _ = self.planar_model(state, tire_torques, mu_max, delta, p)
-        K2, _, _, _, _, _ = self.planar_model(np.array(state) + h / 2 * K1, tire_torques, mu_max, delta, p)
-        K3, _, _, _, _, _ = self.planar_model(np.array(state) + h / 2 * K2, tire_torques, mu_max, delta, p)
-        K4, _, _, _, _, _ = self.planar_model(np.array(state) + h * K3, tire_torques,mu_max, delta, p)
+        K1, _, _, _, _, outputs1 = self.planar_model(state, tire_torques, mu_max, delta, p)
+        K2, _, _, _, _, outputs2 = self.planar_model(np.array(state) + h / 2 * K1, tire_torques, mu_max, delta, p)
+        K3, _, _, _, _, outputs3 = self.planar_model(np.array(state) + h / 2 * K2, tire_torques, mu_max, delta, p)
+        K4, _, _, _, _, outputs4 = self.planar_model(np.array(state) + h * K3, tire_torques,mu_max, delta, p)
 
         # [U_dot, V_dot, wz_dot, wFL_dot, wFR_dot, wRL_dot, wRR_dot, yaw_dot, x_dot, y_dot]
 
         state_update = state + 1 / 6 * h * (K1 + 2 * K2 + 2 * K3 + K4)
         U, V, wz, wFL, wFR, wRL, wRR, yaw, x, y = state_update
+        state_dot = (K1 + 2 * K2 + 2 * K3 + K4)/6
+        outputs = (outputs1 + 2 * outputs2 + 2 * outputs3 + outputs4)/6
 
-        return [state_update, x, y, yaw, U]
+        return [state_update, x, y, yaw, U, state_dot, outputs]
 
 
 def planar_integrate(t, state, tire_torques, mu_max, delta, p):

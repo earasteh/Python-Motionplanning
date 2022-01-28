@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import random as rand
 import time
+from scipy import signal
 
 from vehicle_model import VehicleModel
 from vehicle_model import VehicleParameters
@@ -17,54 +18,34 @@ from env import world  # Importing road definition
 from motionplanner.local_planner_ehsan import LocalPlanner, get_closest_index, motionplanner_datatranslation, \
     transform_paths
 
+###
+# Frame rate = 0.1
+# Vehicle simulation time = 1e-4
+# Controller time = 1e-2 - 1e-3
+# Motion planner  = 3e-2 - 3e-3
+###
+
+Veh_SIM_NUM = 1000  # Number of times vehicle simulation (Simulation_resolution  = sim.dt/Veh_SIM_NUM)
+Control_SIM_NUM = Veh_SIM_NUM / 10
+
+
+# MP_SIM_NUM
 
 class Simulation:
 
     def __init__(self):
         fps = 100.0
 
-        self.dt = 1 / fps
+        self.frame_dt = 1 / fps
+        self.veh_dt = self.frame_dt / Veh_SIM_NUM
+        self.controller_dt = self.frame_dt / Control_SIM_NUM
         self.map_size = 40
         self.frames = 25000
         self.loop = False
 
 
-log_time = [0]
-log_U = []
-log_V = []
-log_wz = []
-log_wFL = []
-log_wFR = []
-log_wRL = []
-log_wRR = []
-log_yaw = []
-log_x = []
-log_y = []
-log_delta = []
-log_tau_FL = []
-log_tau_FR = []
-log_tau_RL = []
-log_tau_RR = []
-log_sFL = []
-log_sFR = []
-log_sRL = []
-log_sRR = []
-log_Fx_FL = []
-log_Fx_FR = []
-log_Fx_RL = []
-log_Fx_RR = []
-log_Fy_FL = []
-log_Fy_FR = []
-log_Fy_RL = []
-log_Fy_RR = []
-log_Fz_FL = []
-log_Fz_FR = []
-log_Fz_RL = []
-log_Fz_RR = []
-
-log_yaw_rate = []
-log_latac = []
-log_crosstrack = []
+# Variable to log all the data
+DataLog = np.zeros((Veh_SIM_NUM * 300, 35))
 
 p = VehicleParameters()
 
@@ -135,6 +116,7 @@ class Car:
         self.k_v = 1000
         self.k_i = 100
         self.k_d = 0
+        self.torque_vec = [0, 0, 0, 0]
 
         # Description parameters
         self.overall_length = 4.97
@@ -161,7 +143,7 @@ class Car:
         self.kbm = VehicleModel(self.wheelbase, self.max_steer, self.dt, self.c_r, self.c_a)
         self.long_tracker = LongitudinalController(self.k_v, self.k_i, self.k_d)
 
-    def drive(self):
+    def drive(self, frame):
         ## Motion Planner:
         waypoints, ego_state = motionplanner_datatranslation(self.px, self.py, self.target_vel,
                                                              self.x, self.y, self.yaw, self.v)
@@ -215,86 +197,59 @@ class Car:
         #     wp_interp.append(list(local_waypoints_np[-1]))
         #     # update the other controller values and controls
         #     self.lateral_tracker.update_waypoints(wp_interp)
+        for i in range(Veh_SIM_NUM):
 
-        ## Motion Controllers:
-        self.delta, self.target_id, self.crosstrack_error = self.lateral_tracker.stanley_control(self.x, self.y,
-                                                                                                 self.yaw,
-                                                                                                 self.v, self.delta)
-        self.total_vel_error, torque_vec = self.long_tracker.long_control(self.target_vel, self.v, self.prev_vel,
-                                                                          self.total_vel_error, self.dt)
-        self.prev_vel = self.v
-        # Vehicle model:
-        for i in range(10):
-            state_dot, _, _, _, _, outputs = self.kbm.planar_model(self.state, torque_vec, [1.0, 1.0, 1.0, 1.0],
-                                                                   [self.delta, self.delta, 0, 0], p)
-            self.state, self.x, self.y, self.yaw, self.v = self.kbm.planar_model_RK4(self.state, torque_vec,
-                                                                                     [1.0, 1.0, 1.0, 1.0],
-                                                                                     [self.delta, self.delta, 0, 0], p)
-
+            ## Motion Controllers:
+            if i % 10 == 0:
+                self.delta, self.target_id, self.crosstrack_error = self.lateral_tracker.stanley_control(self.x, self.y,
+                                                                                                         self.yaw,
+                                                                                                         self.v,
+                                                                                                         self.delta)
+                self.total_vel_error, self.torque_vec = self.long_tracker.long_control(self.target_vel, self.v,
+                                                                                       self.prev_vel,
+                                                                                       self.total_vel_error, self.dt)
+                self.prev_vel = self.v
+            ## Vehicle model
+            self.state, self.x, self.y, self.yaw, self.v, state_dot, outputs = self.kbm.planar_model_RK4(self.state,
+                                                                                                         self.torque_vec,
+                                                                                                         [1.0, 1.0, 1.0,
+                                                                                                          1.0],
+                                                                                                         [self.delta,
+                                                                                                          self.delta, 0,
+                                                                                                          0], p)
             U, V, wz, wFL, wFR, wRL, wRR, yaw, x, y = self.state
             U_dot, V_dot, wz_dot, wFL_dot, wFR_dot, wRL_dot, wRR_dot, yaw_dot, x_dot, y_dot = state_dot
             fFLx, fFRx, fRLx, fRRx, fFLy, fFRy, fRLy, fRRy, fFLz, fFRz, fRLz, fRRz, sFL, sFR, sRL, sRR = outputs
 
-            log_time.append(log_time[-1] + self.kbm.dt)
+            DataLog[frame * Veh_SIM_NUM + i, :] = [(frame * Veh_SIM_NUM + i) * self.kbm.dt, U, V, wz,
+                                                   wFL, wFR, wRL, wRR, yaw, x, y, self.delta,
+                                                   self.torque_vec[0], self.torque_vec[1], self.torque_vec[2],
+                                                   self.torque_vec[3],
+                                                   sFL, sFR, sRL, sRR, fFLx, fFRx, fRLx, fRRx, fFLy, fFRy, fRLy, fRRy,
+                                                   fFLz,
+                                                   fFRz, fRLz, fRRz, yaw_dot, V_dot, self.crosstrack_error]
 
-            log_U.append(U)
-            log_V.append(V)
-            log_wz.append(wz)
+            # DataLog_pd.loc[frame * Veh_SIM_NUM + i, :] = [(frame * Veh_SIM_NUM + i) * self.kbm.dt, U, V, wz,
+            #                                        wFL, wFR, wRL, wRR, yaw, x, y, self.delta,
+            #                                        self.torque_vec[0], self.torque_vec[1], self.torque_vec[2],
+            #                                        self.torque_vec[3],
+            #                                        sFL, sFR, sRL, sRR, fFLx, fFRx, fRLx, fRRx, fFLy, fFRy, fRLy, fRRy,
+            #                                        fFLz,fFRz, fRLz, fRRz, yaw_dot, V_dot, self.crosstrack_error]
 
-            log_wFL.append(wFL)
-            log_wFR.append(wFR)
-            log_wRL.append(wRL)
-            log_wRR.append(wRR)
-
-            log_yaw.append(yaw)
-            log_x.append(x)
-            log_y.append(y)
-
-            log_tau_FL.append(torque_vec[0])
-            log_tau_FR.append(torque_vec[1])
-            log_tau_RL.append(torque_vec[2])
-            log_tau_RR.append(torque_vec[3])
-
-            log_Fx_FL.append(fFLx)
-            log_Fx_FR.append(fFRx)
-            log_Fx_RL.append(fRLx)
-            log_Fx_RR.append(fRRx)
-
-            log_Fy_FL.append(fFLy)
-            log_Fy_FR.append(fFRy)
-            log_Fy_RL.append(fRLy)
-            log_Fy_RR.append(fRRy)
-
-            log_Fz_FL.append(fFLz)
-            log_Fz_FR.append(fFRz)
-            log_Fz_RL.append(fRLz)
-            log_Fz_RR.append(fRRz)
-
-            log_sFL.append(sFL)
-            log_sFR.append(sFR)
-            log_sRL.append(sRL)
-            log_sRR.append(sRR)
-
-            log_yaw_rate.append(yaw_dot)
-            log_latac.append(V_dot)
-
-            log_delta.append(self.delta)
-            log_crosstrack.append(self.crosstrack_error)
-
-            os.system('cls' if os.name == 'nt' else 'clear')
-            print(f"Cross-track term: {self.crosstrack_error}")
-        return paths, # best_index, best_path
+        os.system('cls' if os.name == 'nt' else 'clear')
+        print(f"Cross-track term: {self.crosstrack_error}")
+        return paths,  # best_index, best_path
 
 
 def main():
     sim = Simulation()
     path = world.path
 
-    car = Car(path.px[0], path.py[0], path.pyaw[0], path.px, path.py, path.pyaw, sim.dt)
+    car = Car(path.px[2000], path.py[2000], path.pyaw[2000], path.px, path.py, path.pyaw, sim.veh_dt)
     desc = Description(car.overall_length, car.overall_width, car.rear_overhang, car.tyre_diameter, car.tyre_width,
                        car.axle_track, car.wheelbase)
 
-    interval = sim.dt * 10 ** 2
+    interval = sim.frame_dt * 10 ** -8  # * 10 ** 2
 
     fig = plt.figure()
     ax = plt.axes()
@@ -335,9 +290,8 @@ def main():
 
         # Drive and draw car
         # paths, best_index, best_path = car.drive()
-        paths = car.drive()
+        paths = car.drive(frame)
         paths = np.array(paths)
-
 
         outline_plot, fr_plot, rr_plot, fl_plot, rl_plot = desc.plot_car(car.x, car.y, car.yaw, car.delta)
         outline.set_data(*outline_plot)
@@ -367,78 +321,86 @@ def main():
         # Annotate car's coordinate above car
         annotation.set_text(f'{car.x:.1f}, {car.y:.1f}')
         annotation.set_position((car.x, car.y + 5))
-        plt.title(f'{sim.dt * frame:.2f}s', loc='right')
+        plt.title(f'{sim.frame_dt * frame:.2f}s', loc='right')
         plt.xlabel(f'Speed: {car.v:.2f} m/s', loc='left')
         # plt.savefig(f'fig/visualisation_{frame:04}.png')
 
-        return outline, fr, rr, fl, rl, rear_axle, target, CLP1, CLP2, CLP3, CLP4, CLP5, # CLP_best
+        return outline, fr, rr, fl, rl, rear_axle, target, CLP1, CLP2, CLP3, CLP4, CLP5,  # CLP_best
         # return outline, fr, rr, fl, rl, rear_axle, target,
 
     _ = FuncAnimation(fig, animate, frames=sim.frames, interval=interval, repeat=sim.loop)
     # anim.save('resources/animation.gif', fps=100)   #Uncomment to save the animation
     plt.show()
 
+    DataLog_nz = DataLog[~np.all(DataLog == 0, axis=1)]  # only plot the rows that are not zeros
+    DataLog_pd = pd.DataFrame(DataLog_nz, columns=['time', 'U', 'V', 'wz', 'wFL', 'wFR', 'wRL', 'wRR',
+                                                   'yaw', 'x', 'y', 'delta', 'tau_FL', 'tau_FR', 'tau_RL', 'tau_RR',
+                                                   'sFL', 'sFR', 'sRL', 'sRR', 'Fx_FL', 'Fx_FR', 'Fx_RL', 'Fx_RR',
+                                                   'Fy_FL', 'Fy_FR', 'Fy_RL', 'Fy_RR', 'Fz_FL', 'Fz_FR', 'Fz_RL',
+                                                   'Fz_RR', 'yaw_rate', 'latac', 'crosstrack'])
+
+    # print(arr_nonzero)
     plt.figure()
     plt.title('Forward Velocity')
-    plt.plot(log_time[:-1], log_U)
+    plt.plot(DataLog_pd['time'], DataLog_pd['U'])
     plt.xlabel('Time (Sec.)')
     plt.ylabel('Forward Velocity (m/s)')
 
     plt.figure()
     plt.title('Lateral Velocity')
-    plt.plot(log_time[:-1], log_V)
+    plt.plot(DataLog_pd['time'], DataLog_pd['V'])
     plt.xlabel('Time (Sec.)')
     plt.ylabel('Lateral Velocity (m/s)')
 
     plt.figure()
     plt.title('Yaw rate')
-    plt.plot(log_time[:-1], log_yaw_rate)
+    plt.plot(DataLog_pd['time'], DataLog_pd['yaw_rate'])
     plt.xlabel('Time (Sec.)')
     plt.ylabel('Yaw rate (rad/sec)')
 
     plt.figure()
     plt.title('Lateral Acceleration')
-    plt.plot(log_time[:-1], log_latac)
+    plt.plot(DataLog_pd['time'], DataLog_pd['latac'])
     plt.xlabel('Time (Sec.)')
     plt.ylabel('Lateral Acceleration (m/s^2)')
 
-    # plt.figure()
-    # plt.title('FxFL')
-    # plt.plot(log_time[:-1], log_Fx_FL)
+    plt.figure()
+    plt.title('FxFL')
+    plt.plot(DataLog_pd['time'], DataLog_pd['Fx_FL'])
 
     plt.figure()
     plt.title('Normal Forces')
-    plt.plot(log_time[:-1], log_Fz_FL)
-    plt.plot(log_time[:-1], log_Fz_FR)
-    plt.plot(log_time[:-1], log_Fz_RL)
-    plt.plot(log_time[:-1], log_Fz_RR)
+    plt.plot(DataLog_pd['time'], DataLog_pd['Fz_FL'])
+    plt.plot(DataLog_pd['time'], DataLog_pd['Fz_FR'])
+    plt.plot(DataLog_pd['time'], DataLog_pd['Fz_RL'])
+    plt.plot(DataLog_pd['time'], DataLog_pd['Fz_RR'])
     plt.legend(['FL', 'FR', 'RL', 'RR'])
     plt.xlabel('Time (Sec.)')
     plt.ylabel('Normal Force (N)')
 
     plt.figure()
     plt.title('Torque at each wheel')
-    plt.plot(log_time[:-1], log_tau_FL)
-    plt.plot(log_time[:-1], log_tau_FR)
-    plt.plot(log_time[:-1], log_tau_RL)
-    plt.plot(log_time[:-1], log_tau_RR)
+    plt.plot(DataLog_pd['time'], DataLog_pd['tau_FL'])
+    plt.plot(DataLog_pd['time'], DataLog_pd['tau_FR'])
+    plt.plot(DataLog_pd['time'], DataLog_pd['tau_RL'])
+    plt.plot(DataLog_pd['time'], DataLog_pd['tau_RR'])
     plt.legend(['FL', 'FR', 'RL', 'RR'])
     plt.xlabel('Time (Sec.)')
     plt.ylabel('Wheel Torque (N.m)')
 
     plt.figure()
     plt.title('Steering Angle')
-    plt.plot(log_time[:-1], log_delta)
+    plt.plot(DataLog_pd['time'], DataLog_pd['delta'])
     plt.xlabel('Time (Sec.)')
     plt.ylabel('Steering angle (radians)')
 
     plt.figure()
     plt.title('Cross Track Error')
-    plt.plot(log_time[:-1], log_crosstrack)
+    plt.plot(DataLog_pd['time'], DataLog_pd['crosstrack'])
     plt.xlabel('Time (Sec.)')
     plt.ylabel('Cross Track Error (m)')
 
-    # plt.show()
+    plt.show()
 
 
 if __name__ == '__main__':
