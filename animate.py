@@ -1,4 +1,5 @@
 import collections
+import itertools
 import os
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,6 +19,10 @@ from env import world  # Importing road definition
 from motionplanner.local_planner_ehsan import LocalPlanner, get_closest_index, motionplanner_datatranslation, \
     transform_paths
 
+# Pouneh
+from multiprocessing import Pool as ThreadPool
+import multiprocessing
+
 ###
 # Frame rate = 0.1
 # Vehicle simulation time = 1e-4
@@ -25,7 +30,7 @@ from motionplanner.local_planner_ehsan import LocalPlanner, get_closest_index, m
 # Motion planner  = 3e-2 - 3e-3
 ###
 
-Veh_SIM_NUM = 1000  # Number of times vehicle simulation (Simulation_resolution  = sim.dt/Veh_SIM_NUM)
+Veh_SIM_NUM = 100  # Number of times vehicle simulation (Simulation_resolution  = sim.dt/Veh_SIM_NUM)
 Control_SIM_NUM = Veh_SIM_NUM / 10
 
 
@@ -154,31 +159,38 @@ class Car:
         goal_state_set = self.local_motion_planner.get_goal_state_set(goal_index, goal_state, waypoints, ego_state)
         paths, path_validity = self.local_motion_planner.plan_paths(goal_state_set)
         paths = transform_paths(paths, ego_state)
-        # collision_check_array = self.local_motion_planner._collision_checker.collision_check(paths, np.array(
-        #     world.obstacle_xy))
-        # # Compute the best local path.
-        # best_index = self.local_motion_planner._collision_checker.select_best_path_index(paths, collision_check_array,
-        #                                                                                  goal_state)
-        # if best_index is None:
-        #     best_path = self.local_motion_planner._prev_best_path
-        # else:
-        #     best_path = paths[best_index]
-        #     self.local_motion_planner._prev_best_path = best_path
-        # # # # #  Can implement velocity profile here
-        # local_waypoints = best_path.copy()
-        # a = self.target_vel * np.ones(len(best_path[:][2]))
-        # local_waypoints[2] = [self.target_vel] * len(best_path[:][2])
-        # ####################
-        # if local_waypoints is not None:
-        #     # Update the controller waypoint path with the best local path.
-        #     wp_distance = []  # distance array
-        #     local_waypoints_np = np.array(local_waypoints)
-        #     local_waypoints_np = local_waypoints_np.transpose()
-        #     for i in range(1, local_waypoints_np.shape[0]):
-        #         wp_distance.append(
-        #             np.sqrt((local_waypoints_np[i, 0] - local_waypoints_np[i - 1, 0]) ** 2 +
-        #                     (local_waypoints_np[i, 1] - local_waypoints_np[i - 1, 1]) ** 2))
-        #     wp_distance.append(0)  # last distance is 0 because it is the distance from the last waypoint to the last waypoint
+
+        # Pouneh
+        pool = ThreadPool(processes=len(paths))
+        #collision_check_array = []
+        collision_check_array = pool.starmap(self.local_motion_planner._collision_checker.collision_check,
+                                              zip(paths, itertools.repeat(world.obstacle_xy)))
+
+        # collision_check_array = self.local_motion_planner._collision_checker.collision_check(paths, np.array(world.obstacle_xy))
+
+        # Compute the best local path.
+        best_index = self.local_motion_planner._collision_checker.select_best_path_index(paths, collision_check_array,
+                                                                                         goal_state)
+        if best_index is None:
+            best_path = self.local_motion_planner._prev_best_path
+        else:
+            best_path = paths[best_index]
+            self.local_motion_planner._prev_best_path = best_path
+        # # #  Can implement velocity profile here
+        local_waypoints = best_path.copy()
+        a = self.target_vel * np.ones(len(best_path[:][2]))
+        local_waypoints[2] = [self.target_vel] * len(best_path[:][2])
+        ####################
+        if local_waypoints is not None:
+            # Update the controller waypoint path with the best local path.
+            wp_distance = []  # distance array
+            local_waypoints_np = np.array(local_waypoints)
+            local_waypoints_np = local_waypoints_np.transpose()
+            for i in range(1, local_waypoints_np.shape[0]):
+                wp_distance.append(
+                    np.sqrt((local_waypoints_np[i, 0] - local_waypoints_np[i - 1, 0]) ** 2 +
+                            (local_waypoints_np[i, 1] - local_waypoints_np[i - 1, 1]) ** 2))
+            wp_distance.append(0)  # last distance is 0 because it is the distance from the last waypoint to the last waypoint
         #     # Linearly interpolate between waypoints and store in a list
         #     wp_interp = []  # interpolated values (rows = waypoints, columns = [x, y, v])
         #     for i in range(local_waypoints_np.shape[0] - 1):
@@ -212,7 +224,7 @@ class Car:
                 self.prev_vel = self.v
 
                 # Filter the delta output
-                self.x_del.append((1 - 0.00001 / 0.001) * self.x_del[-1] + 0.00001 / 0.001 * self.delta)
+                self.x_del.append((1 - 0.0001 / 0.001) * self.x_del[-1] + 0.0001 / 0.001 * self.delta)
                 self.delta = self.x_del[-1]
 
             ## Vehicle model
@@ -236,15 +248,15 @@ class Car:
                                                    fFRz, fRLz, fRRz, yaw_dot, V_dot, self.crosstrack_error]
 
         os.system('cls' if os.name == 'nt' else 'clear')
-        print(f"Cross-track term: {self.crosstrack_error}")
-        return paths,  # best_index, best_path
+        # print(f"Cross-track term: {self.crosstrack_error}")
+        return paths, best_index, best_path
 
 
 def main():
     sim = Simulation()
     path = world.path
 
-    car = Car(path.px[2000], path.py[2000], path.pyaw[2000], path.px, path.py, path.pyaw, sim.veh_dt)
+    car = Car(path.px[0], path.py[0], path.pyaw[0], path.px, path.py, path.pyaw, sim.veh_dt)
     desc = Description(car.overall_length, car.overall_width, car.rear_overhang, car.tyre_diameter, car.tyre_width,
                        car.axle_track, car.wheelbase)
 
@@ -271,7 +283,7 @@ def main():
     CLP3, = ax.plot([], [], 'k-.')
     CLP4, = ax.plot([], [], 'k-.')
     CLP5, = ax.plot([], [], 'k-.')
-    # CLP_best, = ax.plot([], [], 'g-.')
+    CLP_best, = ax.plot([], [], 'g-.')
 
     outline, = ax.plot([], [], color=car.colour)
     fr, = ax.plot([], [], color=car.colour)
@@ -288,8 +300,8 @@ def main():
         ax.set_ylim(car.y - sim.map_size, car.y + sim.map_size)
 
         # Drive and draw car
-        # paths, best_index, best_path = car.drive()
-        paths = car.drive(frame)
+        paths, best_index, best_path = car.drive(frame)
+        # paths = car.drive(frame)
         paths = np.array(paths)
 
         outline_plot, fr_plot, rr_plot, fl_plot, rl_plot = desc.plot_car(car.x, car.y, car.yaw, car.delta)
@@ -308,7 +320,7 @@ def main():
             CLP3.set_data(paths[0, 0, :], paths[0, 1, :])
             CLP4.set_data(paths[1, 0, :], paths[1, 1, :])
             CLP5.set_data(paths[2, 0, :], paths[2, 1, :])
-            # CLP_best.set_data(paths[best_index, 0, :], paths[best_index, 1, :])
+            CLP_best.set_data(paths[best_index, 0, :], paths[best_index, 1, :])
         except IndexError:
             CLP1.set_data([0, 0, 0], [0, 0, 0])
             CLP2.set_data([0, 0, 0], [0, 0, 0])
@@ -324,7 +336,7 @@ def main():
         plt.xlabel(f'Speed: {car.v:.2f} m/s', loc='left')
         # plt.savefig(f'fig/visualisation_{frame:04}.png')
 
-        return outline, fr, rr, fl, rl, rear_axle, target, CLP1, CLP2, CLP3, CLP4, CLP5,  # CLP_best
+        return outline, fr, rr, fl, rl, rear_axle, target, CLP1, CLP2, CLP3, CLP4, CLP5, CLP_best
         # return outline, fr, rr, fl, rl, rear_axle, target,
 
     _ = FuncAnimation(fig, animate, frames=sim.frames, interval=interval, repeat=sim.loop)
@@ -338,7 +350,6 @@ def main():
                                                    'Fy_FL', 'Fy_FR', 'Fy_RL', 'Fy_RR', 'Fz_FL', 'Fz_FR', 'Fz_RL',
                                                    'Fz_RR', 'yaw_rate', 'latac', 'crosstrack'])
 
-    # print(arr_nonzero)
     plt.figure()
     plt.title('Forward Velocity')
     plt.plot(DataLog_pd['time'], DataLog_pd['U'])
