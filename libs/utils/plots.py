@@ -6,14 +6,24 @@ import pandas as pd
 This file cleans and labels the data and then plots all the results
 """
 
+
+# U, V, wz, wFL, wFR, wRL, wRR, yaw, x, y = self.state
+# U_dot, V_dot, wz_dot, wFL_dot, wFR_dot, wRL_dot, wRR_dot, yaw_dot, x_dot, y_dot = state_dot
+# fFLx, fFRx, fRLx, fRRx, fFLy, fFRy, fRLy, fRRy, fFLz, fFRz, fRLz, fRRz, sFL, sFR, sRL, sRR, fFLxt, fFLyt = outputs
+
 def data_cleaning(DataLog):
     DataLog_nz = DataLog[~np.all(DataLog == 0, axis=1)]  # only plot the rows that are not zeros
-    DataLog_pd = pd.DataFrame(DataLog_nz, columns=['time', 'U', 'V', 'wz', 'wFL', 'wFR', 'wRL', 'wRR',
-                                                   'yaw', 'x', 'y', 'delta', 'tau_FL', 'tau_FR', 'tau_RL', 'tau_RR',
-                                                   'sFL', 'sFR', 'sRL', 'sRR', 'Fx_FL', 'Fx_FR', 'Fx_RL', 'Fx_RR',
-                                                   'Fy_FL', 'Fy_FR', 'Fy_RL', 'Fy_RR', 'Fz_FL', 'Fz_FR', 'Fz_RL',
-                                                   'Fz_RR', 'yaw_rate', 'latac', 'crosstrack', 'Fxt_FL', 'Fyt_FL'])
+    DataLog_pd = pd.DataFrame(DataLog_nz, columns=['time',
+                                                   'U', 'V', 'wz', 'wFL', 'wFR', 'wRL', 'wRR', 'yaw', 'x', 'y',
+                                                   'U_dot', 'V_dot', 'wz_dot', 'wFL_dot', 'wFR_dot', 'wRL_dot',
+                                                   'wRR_dot', 'yaw_dot', 'x_dot', 'y_dot',
+                                                   'delta', 'tau_FL', 'tau_FR', 'tau_RL', 'tau_RR',
+                                                   'Fx_FL', 'Fx_FR', 'Fx_RL', 'Fx_RR',
+                                                   'Fy_FL', 'Fy_FR', 'Fy_RL', 'Fy_RR',
+                                                   'Fz_FL', 'Fz_FR', 'Fz_RL', 'Fz_RR',
+                                                   'sFL', 'sFR', 'sRL', 'sRR', 'Fxt_FL', 'Fyt_FL', 'crosstrack'])
     return DataLog_pd
+
 
 def plot_results(DataLog_pd):
     plt.figure()
@@ -30,13 +40,13 @@ def plot_results(DataLog_pd):
 
     plt.figure()
     plt.title('Yaw rate')
-    plt.plot(DataLog_pd['time'], DataLog_pd['yaw_rate'])
+    plt.plot(DataLog_pd['time'], DataLog_pd['yaw_dot'])
     plt.xlabel('Time (Sec.)')
     plt.ylabel('Yaw rate (rad/sec)')
 
     plt.figure()
     plt.title('Lateral Acceleration')
-    plt.plot(DataLog_pd['time'], DataLog_pd['latac'])
+    plt.plot(DataLog_pd['time'], DataLog_pd['V_dot'])
     plt.xlabel('Time (Sec.)')
     plt.ylabel('Lateral Acceleration (m/s^2)')
     plt.figure()

@@ -15,7 +15,8 @@ t_ = []
 
 
 class VehicleParameters:
-    def __init__(self, mf=987.89, mr=869.93, mus=50, L=2.906, ab_ratio=0.85, T=1.536, hg=0.55419, Jw=1,
+    def __init__(self, mf=987.89, mr=869.93, mus=50, L=2.906,
+                 ab_ratio=0.85, T=1.536, hg=0.55419, Jw=1,
                  kf=26290, kr=25830,
                  Efront=0.0376, Erear=0, LeverArm=0.13256,
                  BFL=20.6357, CFL=1.5047, DFL=1.1233):
