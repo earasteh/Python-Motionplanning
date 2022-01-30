@@ -14,7 +14,6 @@ from libs.car_description import Description
 from env import world  # Importing road definition
 from motionplanner.local_planner import LocalPlanner
 
-
 ###
 # Frame rate = 0.1
 # Vehicle simulation time = 1e-4
@@ -37,8 +36,9 @@ class Simulation:
         self.veh_dt = self.frame_dt / Veh_SIM_NUM
         self.controller_dt = self.frame_dt / Control_SIM_NUM
         self.map_size = 40
-        self.frames = 250
+        self.frames = 100
         self.loop = False
+
 
 p = VehicleParameters()
 
@@ -58,6 +58,7 @@ LEAD_VEHICLE_LOOKAHEAD = 20.0  # m
 LP_FREQUENCY_DIVISOR = 2  # Frequency divisor to make the
 
 LOOKAHEAD = 10
+
 
 # local planner operate at a lower
 # frequency than the controller
@@ -81,10 +82,12 @@ class Car:
         self.delta = 0.0
         self.omega = 0.0
         self.wheelbase = 2.906
-        self.max_steer = np.deg2rad(45)
+        self.max_steer = np.deg2rad(30)
         self.dt = dt
         self.c_r = 0.01
         self.c_a = 2.0
+        self.ax_prev = 0
+        self.ay_prev = 0
 
         # self.state = [init_vel, 0, 0, init_yaw, init_x, init_y] (these were for the bicycle model states)
         self.state = [init_vel, 0, 0, init_vel / p.rw, init_vel / p.rw, init_vel / p.rw, init_vel / p.rw, init_yaw,
@@ -105,7 +108,7 @@ class Car:
         # Longitudinal Tracker parameters
         self.k_v = 1000
         self.k_i = 100
-        self.k_d = 0
+        self.k_d = 10
         self.torque_vec = [0, 0, 0, 0]
 
         # Description parameters
@@ -136,13 +139,16 @@ class Car:
     def drive(self, frame):
         for i in range(Veh_SIM_NUM):
             ## Motion Planner:
-            if i % 20 == 0:
-                paths, best_index, best_path = self.local_motion_planner.MotionPlanner(self.px, self.py,
-                                                                                       self.target_vel,
-                                                                                       self.x, self.y, self.yaw, self.v,
-                                                                                       self.lateral_tracker)
+            # if i % 20 == 0:
+            #     paths, best_index, best_path = self.local_motion_planner.MotionPlanner(self.px, self.py,
+            #                                                                            self.target_vel,
+            #                                                                            self.x, self.y, self.yaw, self.v,
+            #                                                                            self.lateral_tracker)
+            paths = 0
+            best_index = 0
+            best_path = 0
             ## Motion Controllers:
-            if i % 5 == 0:
+            if i % 10 == 0:
                 self.delta, self.target_id, self.crosstrack_error = self.lateral_tracker.stanley_control(self.x, self.y,
                                                                                                          self.yaw,
                                                                                                          self.v,
@@ -157,27 +163,24 @@ class Car:
                 self.delta = self.x_del[-1]
 
             ## Vehicle model
-            self.state, self.x, self.y, self.yaw, self.v, state_dot, outputs = self.kbm.planar_model_RK4(self.state,
-                                                                                                         self.torque_vec,
-                                                                                                         [1.0, 1.0, 1.0,
-                                                                                                          1.0],
-                                                                                                         [self.delta,
-                                                                                                          self.delta, 0,
-                                                                                                          0], p)
+            self.state, self.x, self.y, self.yaw, self.v, state_dot, outputs, self.ax_prev, self.ay_prev = \
+                self.kbm.planar_model_RK4(self.state,self.torque_vec, [1.0, 1.0, 1.0, 1.0],
+                                          [self.delta, self.delta, 0, 0], p, self.ax_prev, self.ay_prev)
+
             U, V, wz, wFL, wFR, wRL, wRR, yaw, x, y = self.state
             U_dot, V_dot, wz_dot, wFL_dot, wFR_dot, wRL_dot, wRR_dot, yaw_dot, x_dot, y_dot = state_dot
             fFLx, fFRx, fRLx, fRRx, fFLy, fFRy, fRLy, fRRy, fFLz, fFRz, fRLz, fRRz, sFL, sFR, sRL, sRR = outputs
 
             self.DataLog[frame * Veh_SIM_NUM + i, :] = [(frame * Veh_SIM_NUM + i) * self.kbm.dt, U, V, wz,
-                                                   wFL, wFR, wRL, wRR, yaw, x, y, self.delta,
-                                                   self.torque_vec[0], self.torque_vec[1], self.torque_vec[2],
-                                                   self.torque_vec[3],
-                                                   sFL, sFR, sRL, sRR, fFLx, fFRx, fRLx, fRRx, fFLy, fFRy, fRLy, fRRy,
-                                                   fFLz,
-                                                   fFRz, fRLz, fRRz, yaw_dot, V_dot, self.crosstrack_error]
+                                                        wFL, wFR, wRL, wRR, yaw, x, y, self.delta,
+                                                        self.torque_vec[0], self.torque_vec[1], self.torque_vec[2],
+                                                        self.torque_vec[3],
+                                                        sFL, sFR, sRL, sRR, fFLx, fFRx, fRLx, fRRx, fFLy, fFRy, fRLy,
+                                                        fRRy,
+                                                        fFLz,
+                                                        fFRz, fRLz, fRRz, yaw_dot, V_dot, self.crosstrack_error]
 
         os.system('cls' if os.name == 'nt' else 'clear')
-        # print(f"Cross-track term: {self.crosstrack_error}")
         return paths, best_index, best_path
 
 
@@ -256,7 +259,7 @@ def main():
             CLP3.set_data([0, 0, 0], [0, 0, 0])
             CLP4.set_data([0, 0, 0], [0, 0, 0])
             CLP5.set_data([0, 0, 0], [0, 0, 0])
-            # CLP_best.set_data([0, 0, 0], [0, 0, 0])
+            CLP_best.set_data([0, 0, 0], [0, 0, 0])
 
         # Annotate car's coordinate above car
         annotation.set_text(f'{car.x:.1f}, {car.y:.1f}')
@@ -329,7 +332,7 @@ def main():
 
     plt.figure()
     plt.title('Steering Angle')
-    plt.plot(DataLog_pd['time'], DataLog_pd['delta'])
+    plt.plot(DataLog_pd['time'], DataLog_pd['delta'] * 180 / np.pi)
     plt.xlabel('Time (Sec.)')
     plt.ylabel('Steering angle (radians)')
 

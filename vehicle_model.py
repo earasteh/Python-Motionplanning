@@ -220,7 +220,7 @@ class VehicleModel:
         return X, Y, yaw, U, delta, theta_dot, state_update, outputs
         # return [U_dot, V_dot, r_dot, theta_dot, X_dot, Y_dot]
 
-    def planar_model(self, state, tire_torques, mu_max, delta, p):
+    def planar_model(self, state, tire_torques, mu_max, delta, p, ax_prev, ay_prev):
         """:This is the function for 7 ِِDoF model with nonlinear tires (pacejka magic formula)
         """
         # Unpacking the state-space and inputs
@@ -249,10 +249,10 @@ class VehicleModel:
         DfzyR = p.m * p.hg * p.a / ((p.a + p.b) * (p.wL + p.wR))
 
         # TODO: Algebraic loop for ax and ay needs to be fixed later
-        fFLz = fFLz0  # - DfzxL * ax_prev - DfzyF * ay_prev
-        fFRz = fFRz0  # - DfzxR * ax_prev + DfzyF * ay_prev
-        fRLz = fRLz0  # + DfzxL * ax_prev - DfzyR * ay_prev
-        fRRz = fRRz0  # + DfzxR * ax_prev + DfzyR * ay_prev
+        fFLz = fFLz0  - DfzxL * ax_prev - DfzyF * ay_prev
+        fFRz = fFRz0  - DfzxR * ax_prev + DfzyF * ay_prev
+        fRLz = fRLz0  + DfzxL * ax_prev - DfzyR * ay_prev
+        fRRz = fRRz0  + DfzxR * ax_prev + DfzyR * ay_prev
 
         ## Compute tire slip Wheel velocities
         vFLxc = U - p.T * wz / 2
@@ -406,22 +406,6 @@ class VehicleModel:
         ax = axc * cos(yaw) - ayc * sin(yaw)
         ay = axc * sin(yaw) + ayc * cos(yaw)
 
-        axOut = axc
-        ayOut = ayc
-
-        # Integration
-
-        # U += U_dot * self.dt
-        # V += V_dot * self.dt
-        # wz += wz_dot * self.dt
-        # wFL += wFL_dot * self.dt
-        # wFR += wFR_dot * self.dt
-        # wRL += wRL_dot * self.dt
-        # wRR += wRR_dot * self.dt
-        # yaw += yaw_dot * self.dt
-        # x += x_dot * self.dt
-        # y += y_dot * self.dt
-
         yaw = normalise_angle(yaw)
         # state_update = [U, V, wz, wFL, wFR, wRL, wRR, yaw, x, y]
         outputs = np.array([fFLx, fFRx, fRLx, fRRx,
@@ -430,23 +414,27 @@ class VehicleModel:
                    sFL, sFR, sRL, sRR])
 
         # return [state_dot, vx, vy, ax, ay, x, y, yaw, U, state_update, outputs]
-        return [state_dot, vx, vy, ax, ay, outputs]
+        return [state_dot, vx, vy, ax, ay, outputs, axc, ayc]
 
-    def planar_model_RK4(self, state, tire_torques, mu_max, delta, p):
+    def planar_model_RK4(self, state, tire_torques, mu_max, delta, p, ax_prev, ay_prev):
         h = self.dt
-        K1, _, _, _, _, outputs1 = self.planar_model(state, tire_torques, mu_max, delta, p)
-        K2, _, _, _, _, outputs2 = self.planar_model(np.array(state) + h / 2 * K1, tire_torques, mu_max, delta, p)
-        K3, _, _, _, _, outputs3 = self.planar_model(np.array(state) + h / 2 * K2, tire_torques, mu_max, delta, p)
-        K4, _, _, _, _, outputs4 = self.planar_model(np.array(state) + h * K3, tire_torques,mu_max, delta, p)
-
-        # [U_dot, V_dot, wz_dot, wFL_dot, wFR_dot, wRL_dot, wRR_dot, yaw_dot, x_dot, y_dot]
+        K1, _, _, _, _, outputs1, axc1, ayc1 = self.planar_model(state, tire_torques, mu_max, delta, p,
+                                                                 ax_prev, ay_prev)
+        K2, _, _, _, _, outputs2, axc2, ayc2 = self.planar_model(np.array(state) + h / 2 * K1, tire_torques, mu_max,
+                                                                 delta, p, ax_prev, ay_prev)
+        K3, _, _, _, _, outputs3, axc3, ayc3 = self.planar_model(np.array(state) + h / 2 * K2, tire_torques, mu_max,
+                                                                 delta, p, ax_prev, ay_prev)
+        K4, _, _, _, _, outputs4, axc4, ayc4 = self.planar_model(np.array(state) + h * K3, tire_torques,mu_max,
+                                                                 delta, p, ax_prev, ay_prev)
 
         state_update = state + 1 / 6 * h * (K1 + 2 * K2 + 2 * K3 + K4)
         U, V, wz, wFL, wFR, wRL, wRR, yaw, x, y = state_update
         state_dot = (K1 + 2 * K2 + 2 * K3 + K4)/6
-        outputs = (outputs1 + 2 * outputs2 + 2 * outputs3 + outputs4)/6
+        outputs = (outputs1 + 2 * outputs2 + 2 * outputs3 + outputs4) / 6
+        axc = (axc1 + 2 * axc2 + 2 * axc3 + axc4) / 6
+        ayc = (ayc1 + 2 * ayc2 + 2 * ayc3 + ayc4) / 6
 
-        return [state_update, x, y, yaw, U, state_dot, outputs]
+        return [state_update, x, y, yaw, U, state_dot, outputs, axc, ayc]
 
 
 def planar_integrate(t, state, tire_torques, mu_max, delta, p):
