@@ -5,19 +5,19 @@
 </div>
 
 
-Some part of this project is taken from https://github.com/winstxnhdw/KinematicBicycleModel .
+The animation part of this project is taken from https://github.com/winstxnhdw/KinematicBicycleModel 
+and the motion planning part is taken from 
+
 
 Added features:
+- Conformal Lattice Planner
 - A 7 DoF vehicle model with Pacejka magic tire formula (Constant normal forces)
 - Longitudinal PID controller
 - 4th-Order Runge-Kutta (RK4) is added for the integration of the vehicle model instead of Euler
 
 To Do:
-- Change the chassis model to have algebraic normal forces instead of constant normal forces
-- Motion planning features
-  - Conformal Lattice Planner
-  - RRT*
 - Motion controllers need more tuning
+- Change the chassis model to have algebraic normal forces instead of constant normal forces
 
 ## Abstract
 
@@ -26,11 +26,7 @@ To Do:
 ## Limitations
 
 ## Requirements
-
-```bash
-pip install numpy
-```
-
+Numpy, pandas, scipy, multiprocessing
 ## Demo
 
 Install the requirements
@@ -45,7 +41,8 @@ Play the animation
 python animation.py
 ```
 
-## Concept
+## Concepts
+- Conformal Lattice Planner
 - Planar vehicle model
 - Stanley Controller as a lateral control
 - Longitudinal Controller

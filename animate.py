@@ -4,9 +4,6 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import random as rand
-import time
-from scipy import signal
 
 from vehicle_model import VehicleModel
 from vehicle_model import VehicleParameters
@@ -14,14 +11,9 @@ from matplotlib.animation import FuncAnimation
 from libs.stanley_controller import StanleyController
 from libs.stanley_controller import LongitudinalController
 from libs.car_description import Description
-from libs.cubic_spline_interpolator import generate_cubic_spline
 from env import world  # Importing road definition
-from motionplanner.local_planner_ehsan import LocalPlanner, get_closest_index, motionplanner_datatranslation, \
-    transform_paths
+from motionplanner.local_planner import LocalPlanner
 
-# Pouneh
-from multiprocessing import Pool as ThreadPool
-import multiprocessing
 
 ###
 # Frame rate = 0.1
@@ -45,12 +37,8 @@ class Simulation:
         self.veh_dt = self.frame_dt / Veh_SIM_NUM
         self.controller_dt = self.frame_dt / Control_SIM_NUM
         self.map_size = 40
-        self.frames = 25000
+        self.frames = 250
         self.loop = False
-
-
-# Variable to log all the data
-DataLog = np.zeros((Veh_SIM_NUM * 300, 35))
 
 p = VehicleParameters()
 
@@ -71,12 +59,6 @@ LP_FREQUENCY_DIVISOR = 2  # Frequency divisor to make the
 
 LOOKAHEAD = 10
 
-# Path interpolation parameters
-INTERP_MAX_POINTS_PLOT = 10  # number of points used for displaying
-# selected path
-INTERP_DISTANCE_RES = 0.01  # distance between interpolated points
-
-
 # local planner operate at a lower
 # frequency than the controller
 # (which operates at the simulation
@@ -86,6 +68,8 @@ INTERP_DISTANCE_RES = 0.01  # distance between interpolated points
 class Car:
 
     def __init__(self, init_x, init_y, init_yaw, px, py, pyaw, dt):
+        # Variable to log all the data
+        self.DataLog = np.zeros((Veh_SIM_NUM * 300, 35))
         # Model parameters
         init_vel = 15.0
         self.x = init_x
@@ -150,70 +134,15 @@ class Car:
         self.long_tracker = LongitudinalController(self.k_v, self.k_i, self.k_d)
 
     def drive(self, frame):
-        ## Motion Planner:
-        waypoints, ego_state = motionplanner_datatranslation(self.px, self.py, self.target_vel,
-                                                             self.x, self.y, self.yaw, self.v)
-        closest_len, closest_index = get_closest_index(waypoints, ego_state)
-        goal_index = self.local_motion_planner.get_goal_index(waypoints, ego_state, closest_len, closest_index)
-        goal_state = waypoints[goal_index]
-        goal_state_set = self.local_motion_planner.get_goal_state_set(goal_index, goal_state, waypoints, ego_state)
-        paths, path_validity = self.local_motion_planner.plan_paths(goal_state_set)
-        paths = transform_paths(paths, ego_state)
-
-        # Pouneh
-        pool = ThreadPool(processes=len(paths))
-        #collision_check_array = []
-        collision_check_array = pool.starmap(self.local_motion_planner._collision_checker.collision_check,
-                                              zip(paths, itertools.repeat(world.obstacle_xy)))
-
-        # collision_check_array = self.local_motion_planner._collision_checker.collision_check(paths, np.array(world.obstacle_xy))
-
-        # Compute the best local path.
-        best_index = self.local_motion_planner._collision_checker.select_best_path_index(paths, collision_check_array,
-                                                                                         goal_state)
-        if best_index is None:
-            best_path = self.local_motion_planner._prev_best_path
-        else:
-            best_path = paths[best_index]
-            self.local_motion_planner._prev_best_path = best_path
-        # # #  Can implement velocity profile here
-        local_waypoints = best_path.copy()
-        a = self.target_vel * np.ones(len(best_path[:][2]))
-        local_waypoints[2] = [self.target_vel] * len(best_path[:][2])
-        ####################
-        if local_waypoints is not None:
-            # Update the controller waypoint path with the best local path.
-            wp_distance = []  # distance array
-            local_waypoints_np = np.array(local_waypoints)
-            local_waypoints_np = local_waypoints_np.transpose()
-            for i in range(1, local_waypoints_np.shape[0]):
-                wp_distance.append(
-                    np.sqrt((local_waypoints_np[i, 0] - local_waypoints_np[i - 1, 0]) ** 2 +
-                            (local_waypoints_np[i, 1] - local_waypoints_np[i - 1, 1]) ** 2))
-            wp_distance.append(0)  # last distance is 0 because it is the distance from the last waypoint to the last waypoint
-        #     # Linearly interpolate between waypoints and store in a list
-        #     wp_interp = []  # interpolated values (rows = waypoints, columns = [x, y, v])
-        #     for i in range(local_waypoints_np.shape[0] - 1):
-        #         # Add original waypoint to interpolated waypoints list (and append it to the hash table)
-        #         wp_interp.append(list(local_waypoints_np[i]))
-        #         # Interpolate to the next waypoint. First compute the number of
-        #         # points to interpolate based on the desired resolution and
-        #         # incrementally add interpolated points until the next waypoint is about to be reached.
-        #         num_pts_to_interp = int(np.floor(wp_distance[i] / float(INTERP_DISTANCE_RES)) - 1)
-        #         wp_vector = local_waypoints_np[i + 1] - local_waypoints_np[i]
-        #         wp_uvector = wp_vector / np.linalg.norm(wp_vector[0:2])
-        #
-        #         for j in range(num_pts_to_interp):
-        #             next_wp_vector = INTERP_DISTANCE_RES * float(j + 1) * wp_uvector
-        #             wp_interp.append(list(local_waypoints_np[i] + next_wp_vector))
-        #     # add last waypoint at the end
-        #     wp_interp.append(list(local_waypoints_np[-1]))
-        #     # update the other controller values and controls
-        #     self.lateral_tracker.update_waypoints(wp_interp)
         for i in range(Veh_SIM_NUM):
-
+            ## Motion Planner:
+            if i % 20 == 0:
+                paths, best_index, best_path = self.local_motion_planner.MotionPlanner(self.px, self.py,
+                                                                                       self.target_vel,
+                                                                                       self.x, self.y, self.yaw, self.v,
+                                                                                       self.lateral_tracker)
             ## Motion Controllers:
-            if i % 10 == 0:
+            if i % 5 == 0:
                 self.delta, self.target_id, self.crosstrack_error = self.lateral_tracker.stanley_control(self.x, self.y,
                                                                                                          self.yaw,
                                                                                                          self.v,
@@ -239,7 +168,7 @@ class Car:
             U_dot, V_dot, wz_dot, wFL_dot, wFR_dot, wRL_dot, wRR_dot, yaw_dot, x_dot, y_dot = state_dot
             fFLx, fFRx, fRLx, fRRx, fFLy, fFRy, fRLy, fRRy, fFLz, fFRz, fRLz, fRRz, sFL, sFR, sRL, sRR = outputs
 
-            DataLog[frame * Veh_SIM_NUM + i, :] = [(frame * Veh_SIM_NUM + i) * self.kbm.dt, U, V, wz,
+            self.DataLog[frame * Veh_SIM_NUM + i, :] = [(frame * Veh_SIM_NUM + i) * self.kbm.dt, U, V, wz,
                                                    wFL, wFR, wRL, wRR, yaw, x, y, self.delta,
                                                    self.torque_vec[0], self.torque_vec[1], self.torque_vec[2],
                                                    self.torque_vec[3],
@@ -256,7 +185,7 @@ def main():
     sim = Simulation()
     path = world.path
 
-    car = Car(path.px[0], path.py[0], path.pyaw[0], path.px, path.py, path.pyaw, sim.veh_dt)
+    car = Car(path.px[1200], path.py[1200], path.pyaw[1200], path.px, path.py, path.pyaw, sim.veh_dt)
     desc = Description(car.overall_length, car.overall_width, car.rear_overhang, car.tyre_diameter, car.tyre_width,
                        car.axle_track, car.wheelbase)
 
@@ -343,7 +272,7 @@ def main():
     # anim.save('resources/animation.gif', fps=100)   #Uncomment to save the animation
     plt.show()
 
-    DataLog_nz = DataLog[~np.all(DataLog == 0, axis=1)]  # only plot the rows that are not zeros
+    DataLog_nz = car.DataLog[~np.all(car.DataLog == 0, axis=1)]  # only plot the rows that are not zeros
     DataLog_pd = pd.DataFrame(DataLog_nz, columns=['time', 'U', 'V', 'wz', 'wFL', 'wFR', 'wRL', 'wRR',
                                                    'yaw', 'x', 'y', 'delta', 'tau_FL', 'tau_FR', 'tau_RL', 'tau_RR',
                                                    'sFL', 'sFR', 'sRL', 'sRR', 'Fx_FL', 'Fx_FR', 'Fx_RL', 'Fx_RR',
