@@ -146,6 +146,7 @@ class Car:
             best_index = 0
             best_path = 0
             ## Motion Controllers:
+            ## git test
             if i % 10 == 0:
                 self.delta, self.target_id, self.crosstrack_error = self.lateral_tracker.stanley_control(self.x, self.y,
                                                                                                          self.yaw,
