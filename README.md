@@ -1,5 +1,8 @@
 # Motion Planning Project
 
+[![build](https://github.com/earasteh/Python-Motionplanning/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/earasteh/Python-Motionplanning/actions/workflows/build.yml)
+
+
 <div align="center">
 	<img src="resources/animation.gif" />
 </div>
