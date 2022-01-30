@@ -32,4 +32,4 @@ jobs:
       - name: Install the package
         run: |
           pip install -r requirements.txt
-          python setup.py install
+          python animate.py
