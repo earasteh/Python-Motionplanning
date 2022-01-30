@@ -6,7 +6,8 @@
 
 
 The animation part of this project is taken from https://github.com/winstxnhdw/KinematicBicycleModel 
-and the motion planning part is taken from 
+and the motion planning part is taken from Coursera's class on motion planning.
+
 
 
 Added features:
@@ -16,7 +17,7 @@ Added features:
 - 4th-Order Runge-Kutta (RK4) is added for the integration of the vehicle model instead of Euler
 
 To Do:
-- Motion controllers need more tuning
+- Motion controllers need more tuning (not working in a higher speeds)
 - Change the chassis model to have algebraic normal forces instead of constant normal forces
 
 ## Abstract
