@@ -1,6 +1,6 @@
 import numpy as np
 
-from libs.normalise_angle import normalise_angle
+from libs.utils.normalise_angle import normalise_angle
 
 
 class StanleyController:
@@ -132,7 +132,7 @@ class LongitudinalController:
         if current_velocity <= 0.01:
             tau = abs(tau)
 
-        return v_total_error_new, [tau, tau, tau, tau]
+        return v_total_error_new, [tau, tau, 0, 0]
 
 
 def main():

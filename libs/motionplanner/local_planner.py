@@ -8,12 +8,12 @@ import itertools
 
 import numpy as np
 import copy
-from motionplanner import path_optimizer
-from motionplanner import collision_checker
-from motionplanner import velocity_planner
+from libs.motionplanner import path_optimizer
+from libs.motionplanner import collision_checker
+from libs.motionplanner import velocity_planner
 from math import sin, cos, pi
 from multiprocessing import Pool as ThreadPool
-from env import world
+from libs.utils.env import world
 
 # Path interpolation parameters
 INTERP_MAX_POINTS_PLOT = 10  # number of points used for displaying

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from numpy import cos, sin, tan, clip, abs, sqrt, arctan, pi, array, linspace
 import numpy as np
-from libs.normalise_angle import normalise_angle
+from libs.utils.normalise_angle import normalise_angle
 from scipy.integrate import solve_ivp
 from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
@@ -36,8 +36,8 @@ class VehicleParameters:
         self.kr = kr  # rear suspension stiffness
         self.rw = self.rr - (self.mf / 2 + self.mus) / self.kf
 
-        ## Tire parameters
-        self.BFL = BFL  # MagicFormula
+        ## Tire parameters for Magic formula
+        self.BFL = BFL
         self.CFL = CFL
         self.DFL = DFL
         self.BFR = self.BFL
@@ -248,7 +248,6 @@ class VehicleModel:
         DfzyF = p.m * p.hg * p.b / ((p.a + p.b) * (p.wL + p.wR))
         DfzyR = p.m * p.hg * p.a / ((p.a + p.b) * (p.wL + p.wR))
 
-        # TODO: Algebraic loop for ax and ay needs to be fixed later
         fFLz = fFLz0  - DfzxL * ax_prev - DfzyF * ay_prev
         fFRz = fFRz0  - DfzxR * ax_prev + DfzyF * ay_prev
         fRLz = fRLz0  + DfzxL * ax_prev - DfzyR * ay_prev
@@ -257,10 +256,13 @@ class VehicleModel:
         ## Compute tire slip Wheel velocities
         vFLxc = U - p.T * wz / 2
         vFLyc = V + p.a * wz
+
         vFRxc = U + p.T * wz / 2
         vFRyc = V + p.a * wz
+
         vRLxc = U - p.T * wz / 2
         vRLyc = V - p.b * wz
+
         vRRxc = U + p.T * wz / 2
         vRRyc = V - p.b * wz
 
@@ -356,10 +358,13 @@ class VehicleModel:
         ## Rotate to obtain forces in the chassis frame
         fFLx = fFLxt * cos(deltaFL) - fFLyt * sin(deltaFL)
         fFLy = fFLxt * sin(deltaFL) + fFLyt * cos(deltaFL)
+
         fFRx = fFRxt * cos(deltaFR) - fFRyt * sin(deltaFR)
         fFRy = fFRxt * sin(deltaFR) + fFRyt * cos(deltaFR)
+
         fRLx = fRLxt * cos(deltaRL) - fRLyt * sin(deltaRL)
         fRLy = fRLxt * sin(deltaRL) + fRLyt * cos(deltaRL)
+
         fRRx = fRRxt * cos(deltaRR) - fRRyt * sin(deltaRR)
         fRRy = fRRxt * sin(deltaRR) + fRRyt * cos(deltaRR)
 
@@ -378,24 +383,24 @@ class VehicleModel:
         state_dot = np.array([U_dot, V_dot, wz_dot, wFL_dot, wFR_dot, wRL_dot, wRR_dot, yaw_dot, x_dot, y_dot])
 
         # Velocities at the wheel contact patch in the global inertial frame
-        vFLxg = vFLxc * cos(yaw) - vFLyc * sin(yaw)
-        vFRxg = vFRxc * cos(yaw) - vFRyc * sin(yaw)
-        vRLxg = vRLxc * cos(yaw) - vRLyc * sin(yaw)
-        vRRxg = vRRxc * cos(yaw) - vRRyc * sin(yaw)
-        vFLyg = vFLxc * sin(yaw) + vFLyc * cos(yaw)
-        vFRyg = vFRxc * sin(yaw) + vFRyc * cos(yaw)
-        vRLyg = vRLxc * sin(yaw) + vRLyc * cos(yaw)
-        vRRyg = vRRxc * sin(yaw) + vRRyc * cos(yaw)
+        # vFLxg = vFLxc * cos(yaw) - vFLyc * sin(yaw)
+        # vFRxg = vFRxc * cos(yaw) - vFRyc * sin(yaw)
+        # vRLxg = vRLxc * cos(yaw) - vRLyc * sin(yaw)
+        # vRRxg = vRRxc * cos(yaw) - vRRyc * sin(yaw)
+        # vFLyg = vFLxc * sin(yaw) + vFLyc * cos(yaw)
+        # vFRyg = vFRxc * sin(yaw) + vFRyc * cos(yaw)
+        # vRLyg = vRLxc * sin(yaw) + vRLyc * cos(yaw)
+        # vRRyg = vRRxc * sin(yaw) + vRRyc * cos(yaw)
 
         # Position of the wheel contact patch in the global inertial frame
-        xFL = x + p.a * cos(yaw) - p.T / 2 * sin(yaw)
-        yFL = y + p.a * sin(yaw) + p.T / 2 * cos(yaw)
-        xFR = x + p.a * cos(yaw) + p.T / 2 * sin(yaw)
-        yFR = y + p.a * sin(yaw) - p.T / 2 * cos(yaw)
-        xRL = x - p.b * cos(yaw) - p.T / 2 * sin(yaw)
-        yRL = y - p.b * sin(yaw) + p.T / 2 * cos(yaw)
-        xRR = x - p.b * cos(yaw) + p.T / 2 * sin(yaw)
-        yRR = y - p.b * sin(yaw) - p.T / 2 * cos(yaw)
+        # xFL = x + p.a * cos(yaw) - p.T / 2 * sin(yaw)
+        # yFL = y + p.a * sin(yaw) + p.T / 2 * cos(yaw)
+        # xFR = x + p.a * cos(yaw) + p.T / 2 * sin(yaw)
+        # yFR = y + p.a * sin(yaw) - p.T / 2 * cos(yaw)
+        # xRL = x - p.b * cos(yaw) - p.T / 2 * sin(yaw)
+        # yRL = y - p.b * sin(yaw) + p.T / 2 * cos(yaw)
+        # xRR = x - p.b * cos(yaw) + p.T / 2 * sin(yaw)
+        # yRR = y - p.b * sin(yaw) - p.T / 2 * cos(yaw)
 
         # Chassis velocity, and acceleration in the global inertial frame
         vx = U * cos(yaw) - V * sin(yaw)
@@ -411,7 +416,7 @@ class VehicleModel:
         outputs = np.array([fFLx, fFRx, fRLx, fRRx,
                    fFLy, fFRy, fRLy, fRRy,
                    fFLz, fFRz, fRLz, fRRz,
-                   sFL, sFR, sRL, sRR])
+                   sFL, sFR, sRL, sRR, fFLxt, fFLyt])
 
         # return [state_dot, vx, vy, ax, ay, x, y, yaw, U, state_update, outputs]
         return [state_dot, vx, vy, ax, ay, outputs, axc, ayc]

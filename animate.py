@@ -1,18 +1,16 @@
-import collections
-import itertools
 import os
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 
 from vehicle_model import VehicleModel
 from vehicle_model import VehicleParameters
 from matplotlib.animation import FuncAnimation
-from libs.stanley_controller import StanleyController
-from libs.stanley_controller import LongitudinalController
-from libs.car_description import Description
-from env import world  # Importing road definition
-from motionplanner.local_planner import LocalPlanner
+from libs.controllers.stanley_controller import StanleyController
+from libs.controllers.stanley_controller import LongitudinalController
+from libs.utils.car_description import Description
+from libs.utils.env import world  # Importing road definition
+from libs.motionplanner.local_planner import LocalPlanner
+from libs.utils.plots import data_cleaning, plot_results
 
 ###
 # Frame rate = 0.1
@@ -21,7 +19,7 @@ from motionplanner.local_planner import LocalPlanner
 # Motion planner  = 3e-2 - 3e-3
 ###
 
-Veh_SIM_NUM = 100  # Number of times vehicle simulation (Simulation_resolution  = sim.dt/Veh_SIM_NUM)
+Veh_SIM_NUM = 1000  # Number of times vehicle simulation (Simulation_resolution  = sim.dt/Veh_SIM_NUM)
 Control_SIM_NUM = Veh_SIM_NUM / 10
 
 
@@ -36,7 +34,7 @@ class Simulation:
         self.veh_dt = self.frame_dt / Veh_SIM_NUM
         self.controller_dt = self.frame_dt / Control_SIM_NUM
         self.map_size = 40
-        self.frames = 100
+        self.frames = 10
         self.loop = False
 
 
@@ -70,14 +68,14 @@ class Car:
 
     def __init__(self, init_x, init_y, init_yaw, px, py, pyaw, dt):
         # Variable to log all the data
-        self.DataLog = np.zeros((Veh_SIM_NUM * 300, 35))
+        self.DataLog = np.zeros((Veh_SIM_NUM * 2500, 37))
         # Model parameters
-        init_vel = 15.0
+        init_vel = 25.0
         self.x = init_x
         self.y = init_y
         self.yaw = init_yaw
         self.prev_vel = self.v = init_vel
-        self.target_vel = 15.0
+        self.target_vel = 25.0
         self.total_vel_error = 0
         self.delta = 0.0
         self.omega = 0.0
@@ -108,7 +106,7 @@ class Car:
         # Longitudinal Tracker parameters
         self.k_v = 1000
         self.k_i = 100
-        self.k_d = 10
+        self.k_d = 0
         self.torque_vec = [0, 0, 0, 0]
 
         # Description parameters
@@ -159,7 +157,7 @@ class Car:
                 self.prev_vel = self.v
 
                 # Filter the delta output
-                self.x_del.append((1 - 0.0001 / 0.001) * self.x_del[-1] + 0.0001 / 0.001 * self.delta)
+                self.x_del.append((1 - 1e-4/0.001) * self.x_del[-1] + 1e-4/0.001 * self.delta)
                 self.delta = self.x_del[-1]
 
             ## Vehicle model
@@ -169,7 +167,7 @@ class Car:
 
             U, V, wz, wFL, wFR, wRL, wRR, yaw, x, y = self.state
             U_dot, V_dot, wz_dot, wFL_dot, wFR_dot, wRL_dot, wRR_dot, yaw_dot, x_dot, y_dot = state_dot
-            fFLx, fFRx, fRLx, fRRx, fFLy, fFRy, fRLy, fRRy, fFLz, fFRz, fRLz, fRRz, sFL, sFR, sRL, sRR = outputs
+            fFLx, fFRx, fRLx, fRRx, fFLy, fFRy, fRLy, fRRy, fFLz, fFRz, fRLz, fRRz, sFL, sFR, sRL, sRR, fFLxt, fFLyt = outputs
 
             self.DataLog[frame * Veh_SIM_NUM + i, :] = [(frame * Veh_SIM_NUM + i) * self.kbm.dt, U, V, wz,
                                                         wFL, wFR, wRL, wRR, yaw, x, y, self.delta,
@@ -178,7 +176,8 @@ class Car:
                                                         sFL, sFR, sRL, sRR, fFLx, fFRx, fRLx, fRRx, fFLy, fFRy, fRLy,
                                                         fRRy,
                                                         fFLz,
-                                                        fFRz, fRLz, fRRz, yaw_dot, V_dot, self.crosstrack_error]
+                                                        fFRz, fRLz, fRRz, yaw_dot, V_dot, self.crosstrack_error,
+                                                        fFLxt, fFLyt]
 
         os.system('cls' if os.name == 'nt' else 'clear')
         return paths, best_index, best_path
@@ -188,7 +187,7 @@ def main():
     sim = Simulation()
     path = world.path
 
-    car = Car(path.px[1200], path.py[1200], path.pyaw[1200], path.px, path.py, path.pyaw, sim.veh_dt)
+    car = Car(path.px[1800], path.py[1800], path.pyaw[1800], path.px, path.py, path.pyaw, sim.veh_dt)
     desc = Description(car.overall_length, car.overall_width, car.rear_overhang, car.tyre_diameter, car.tyre_width,
                        car.axle_track, car.wheelbase)
 
@@ -275,75 +274,7 @@ def main():
     # anim.save('resources/animation.gif', fps=100)   #Uncomment to save the animation
     plt.show()
 
-    DataLog_nz = car.DataLog[~np.all(car.DataLog == 0, axis=1)]  # only plot the rows that are not zeros
-    DataLog_pd = pd.DataFrame(DataLog_nz, columns=['time', 'U', 'V', 'wz', 'wFL', 'wFR', 'wRL', 'wRR',
-                                                   'yaw', 'x', 'y', 'delta', 'tau_FL', 'tau_FR', 'tau_RL', 'tau_RR',
-                                                   'sFL', 'sFR', 'sRL', 'sRR', 'Fx_FL', 'Fx_FR', 'Fx_RL', 'Fx_RR',
-                                                   'Fy_FL', 'Fy_FR', 'Fy_RL', 'Fy_RR', 'Fz_FL', 'Fz_FR', 'Fz_RL',
-                                                   'Fz_RR', 'yaw_rate', 'latac', 'crosstrack'])
-
-    plt.figure()
-    plt.title('Forward Velocity')
-    plt.plot(DataLog_pd['time'], DataLog_pd['U'])
-    plt.xlabel('Time (Sec.)')
-    plt.ylabel('Forward Velocity (m/s)')
-
-    plt.figure()
-    plt.title('Lateral Velocity')
-    plt.plot(DataLog_pd['time'], DataLog_pd['V'])
-    plt.xlabel('Time (Sec.)')
-    plt.ylabel('Lateral Velocity (m/s)')
-
-    plt.figure()
-    plt.title('Yaw rate')
-    plt.plot(DataLog_pd['time'], DataLog_pd['yaw_rate'])
-    plt.xlabel('Time (Sec.)')
-    plt.ylabel('Yaw rate (rad/sec)')
-
-    plt.figure()
-    plt.title('Lateral Acceleration')
-    plt.plot(DataLog_pd['time'], DataLog_pd['latac'])
-    plt.xlabel('Time (Sec.)')
-    plt.ylabel('Lateral Acceleration (m/s^2)')
-
-    plt.figure()
-    plt.title('FxFL')
-    plt.plot(DataLog_pd['time'], DataLog_pd['Fx_FL'])
-
-    plt.figure()
-    plt.title('Normal Forces')
-    plt.plot(DataLog_pd['time'], DataLog_pd['Fz_FL'])
-    plt.plot(DataLog_pd['time'], DataLog_pd['Fz_FR'])
-    plt.plot(DataLog_pd['time'], DataLog_pd['Fz_RL'])
-    plt.plot(DataLog_pd['time'], DataLog_pd['Fz_RR'])
-    plt.legend(['FL', 'FR', 'RL', 'RR'])
-    plt.xlabel('Time (Sec.)')
-    plt.ylabel('Normal Force (N)')
-
-    plt.figure()
-    plt.title('Torque at each wheel')
-    plt.plot(DataLog_pd['time'], DataLog_pd['tau_FL'])
-    plt.plot(DataLog_pd['time'], DataLog_pd['tau_FR'])
-    plt.plot(DataLog_pd['time'], DataLog_pd['tau_RL'])
-    plt.plot(DataLog_pd['time'], DataLog_pd['tau_RR'])
-    plt.legend(['FL', 'FR', 'RL', 'RR'])
-    plt.xlabel('Time (Sec.)')
-    plt.ylabel('Wheel Torque (N.m)')
-
-    plt.figure()
-    plt.title('Steering Angle')
-    plt.plot(DataLog_pd['time'], DataLog_pd['delta'] * 180 / np.pi)
-    plt.xlabel('Time (Sec.)')
-    plt.ylabel('Steering angle (radians)')
-
-    plt.figure()
-    plt.title('Cross Track Error')
-    plt.plot(DataLog_pd['time'], DataLog_pd['crosstrack'])
-    plt.xlabel('Time (Sec.)')
-    plt.ylabel('Cross Track Error (m)')
-
-    plt.show()
-
+    plot_results(data_cleaning(car.DataLog))
 
 if __name__ == '__main__':
     main()

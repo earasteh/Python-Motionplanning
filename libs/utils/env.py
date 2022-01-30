@@ -3,7 +3,7 @@ This file contains the class definition of the environment the vehicle is moving
 """
 import os
 import numpy as np
-from libs.cubic_spline_interpolator import generate_cubic_spline
+from libs.utils.cubic_spline_interpolator import generate_cubic_spline
 import pandas as pd
 import matplotlib.pyplot as plt
 
