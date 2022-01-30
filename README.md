@@ -1,6 +1,6 @@
 # Motion Planning Project
 
-[![build](https://github.com/earasteh/Python-Motionplanning/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/earasteh/Python-Motionplanning/actions/workflows/build.yml)
+[![build](https://github.com/earasteh/Python-Motionplanning/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/earasteh/Python-Motionplanning/actions/workflows/build.yml)
 
 
 <div align="center">
