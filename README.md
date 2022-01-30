@@ -41,6 +41,32 @@ Play the animation
 python animation.py
 ```
 
+## Folder structure
+```bash
+├── animate.py
+├── data
+│   ├── waypoints.csv
+├── libs
+│   ├── controllers
+│   │   └── stanley_controller.py
+│   ├── motionplanner
+│   │   ├── collision_checker.py
+│   │   ├── local_planner.py
+│   │   ├── path_optimizer.py
+│   │   └── velocity_planner.py
+│   └── utils
+│       ├── car_description.py
+│       ├── cubic_spline_interpolator.py
+│       ├── env.py
+│       ├── normalise_angle.py
+│       ├── plots.py
+├── README.md
+├── requirements.txt
+├── resources
+│   └── animation.gif
+└── vehicle_model.py
+```
+
 ## Concepts
 - Conformal Lattice Planner
 - Planar vehicle model
