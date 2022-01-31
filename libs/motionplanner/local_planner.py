@@ -366,9 +366,15 @@ class LocalPlanner:
         goal_state_set = self.get_goal_state_set(goal_index, goal_state, waypoints, ego_state)
         paths, path_validity = self.plan_paths(goal_state_set)
         paths = transform_paths(paths, ego_state)
-        pool = ThreadPool(processes=len(paths))
-        collision_check_array = pool.starmap(self._collision_checker.collision_check,
+        try:
+            pool = ThreadPool(processes=len(paths))
+            collision_check_array = pool.starmap(self._collision_checker.collision_check,
                                               zip(paths, itertools.repeat(obstacle)))
+        except ValueError:
+            collision_check_array = [True] * 7
+        # if not any(collision_check_array):
+        #     raise Exception("All paths are colliding with an object!!")
+
         # Compute the best local path.
         best_index = self._collision_checker.select_best_path_index(paths, collision_check_array, goal_state)
         if best_index is None:
@@ -378,7 +384,7 @@ class LocalPlanner:
             self._prev_best_path = best_path
         # # #  Can implement velocity profile here
         local_waypoints = best_path.copy()
-        a = target_vel * np.ones(len(best_path[:][2]))
+        # a = target_vel * np.ones(len(best_path[:][2]))
         local_waypoints[2] = [target_vel] * len(best_path[:][2])
         ####################
         if local_waypoints is not None:
