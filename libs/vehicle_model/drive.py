@@ -38,18 +38,19 @@ LOOKAHEAD = 25
 
 p = VehicleParameters()
 
+
 class Car:
 
     def __init__(self, init_x, init_y, init_yaw, px, py, pyaw, dt):
         # Variable to log all the data
         self.DataLog = np.zeros((Veh_SIM_NUM * 2500, 45))
         # Model parameters
-        init_vel = 25.0
+        init_vel = 15.0
         self.x = init_x
         self.y = init_y
         self.yaw = init_yaw
         self.prev_vel = self.v = init_vel
-        self.target_vel = 25.0
+        self.target_vel = 15.0
         self.total_vel_error = 0
         self.delta = 0.0
         self.omega = 0.0
@@ -110,31 +111,34 @@ class Car:
 
     def drive(self, frame):
         for i in range(Veh_SIM_NUM):
-            ## Motion Planner:
-            # if i % 20 == 0:
-            #     paths, best_index, best_path = \
-            #         self.local_motion_planner.MotionPlanner(self.px, self.py, self.target_vel,
-            #                                                 self.x, self.y, self.yaw, self.v, self.lateral_tracker)
-            # if paths is None:
-            paths = 0
-            best_index = 0
-            best_path = 0
+            # Motion Planner:
+            if i % 20 == 0:
+                paths, best_index, best_path, px_new, py_new = \
+                    self.local_motion_planner.MotionPlanner(self.px, self.py, self.target_vel,
+                                                            self.x, self.y, self.yaw, self.v, self.lateral_tracker)
+                if px_new is None or py_new is None:
+                    px_new = self.px
+                    py_new = self.py
+                    paths = 0
+                    best_index = 0
+                    best_path = 0
             ## Motion Controllers:
-            if i % 2 == 0:
+            if i % 10 == 0:
                 self.delta, self.target_id, self.crosstrack_error = \
-                    self.lateral_tracker.stanley_control(self.x, self.y, self.yaw, self.v, self.delta)
+                    self.lateral_tracker.stanley_control(self.x, self.y, self.yaw, px_new, py_new, self.pyaw, self.v,
+                                                         self.delta)
                 self.total_vel_error, self.torque_vec = \
                     self.long_tracker.long_control(self.target_vel, self.v, self.prev_vel,
                                                    self.total_vel_error, self.dt)
                 self.prev_vel = self.v
 
                 # Filter the delta output
-                self.x_del.append((1 - 1e-4/0.001) * self.x_del[-1] + 1e-4/0.001 * self.delta)
+                self.x_del.append((1 - 1e-4 / 0.001) * self.x_del[-1] + 1e-4 / 0.001 * self.delta)
                 self.delta = self.x_del[-1]
 
             ## Vehicle model
             self.state, self.x, self.y, self.yaw, self.v, state_dot, outputs, self.ax_prev, self.ay_prev = \
-                self.kbm.planar_model_RK4(self.state,self.torque_vec, [1.0, 1.0, 1.0, 1.0],
+                self.kbm.planar_model_RK4(self.state, self.torque_vec, [1.0, 1.0, 1.0, 1.0],
                                           [self.delta, self.delta, 0, 0], p, self.ax_prev, self.ay_prev)
 
             self.DataLog[frame * Veh_SIM_NUM + i, 0] = (frame * Veh_SIM_NUM + i) * self.kbm.dt

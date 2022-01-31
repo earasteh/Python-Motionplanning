@@ -411,8 +411,9 @@ class LocalPlanner:
             # add last waypoint at the end
             wp_interp.append(list(local_waypoints_np[-1]))
             # update the other controller values and controls
-            LateralTrackerObj.update_waypoints(wp_interp)
-        return paths, best_index, best_path
+            px_new, py_new = LateralTrackerObj.update_waypoints(wp_interp) # new points to follow
+
+        return paths, best_index, best_path, px_new, py_new
 
 
 def transform_paths(paths, ego_state):
