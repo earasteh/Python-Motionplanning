@@ -13,7 +13,7 @@ from libs.motionplanner.local_planner import LocalPlanner
 # Motion planner  = 3e-2 - 3e-3
 ###
 
-Veh_SIM_NUM = 1000  # Number of times vehicle simulation (Simulation_resolution  = sim.dt/Veh_SIM_NUM)
+Veh_SIM_NUM = 100  # Number of times vehicle simulation (Simulation_resolution  = sim.dt/Veh_SIM_NUM)
 Control_SIM_NUM = Veh_SIM_NUM / 10
 
 ## Motion planner constants
@@ -34,7 +34,7 @@ LP_FREQUENCY_DIVISOR = 2  # Frequency divisor to make the local planner operate 
 # (which operates at the simulation
 # frequency). Must be a natural
 # number.
-LOOKAHEAD = 10
+LOOKAHEAD = 25
 
 p = VehicleParameters()
 
@@ -44,12 +44,12 @@ class Car:
         # Variable to log all the data
         self.DataLog = np.zeros((Veh_SIM_NUM * 2500, 45))
         # Model parameters
-        init_vel = 20.0
+        init_vel = 25.0
         self.x = init_x
         self.y = init_y
         self.yaw = init_yaw
         self.prev_vel = self.v = init_vel
-        self.target_vel = 20.0
+        self.target_vel = 25.0
         self.total_vel_error = 0
         self.delta = 0.0
         self.omega = 0.0
@@ -69,9 +69,9 @@ class Car:
         self.px = px
         self.py = py
         self.pyaw = pyaw
-        self.k = 8.0
+        self.k = 8
         self.ksoft = 1.0
-        self.kyaw = 0.01
+        self.kyaw = 0
         self.ksteer = 0
         self.crosstrack_error = None
         self.target_id = None
@@ -105,22 +105,22 @@ class Car:
         self.lateral_tracker = StanleyController(self.k, self.ksoft, self.kyaw, self.ksteer, self.max_steer,
                                                  self.wheelbase,
                                                  self.px, self.py, self.pyaw)
-        self.kbm = VehicleModel(self.wheelbase, self.max_steer, self.dt, self.c_r, self.c_a)
+        self.kbm = VehicleModel(self.wheelbase, self.max_steer, self.dt)
         self.long_tracker = LongitudinalController(self.k_v, self.k_i, self.k_d)
 
     def drive(self, frame):
         for i in range(Veh_SIM_NUM):
             ## Motion Planner:
             # if i % 20 == 0:
-            #     paths, best_index, best_path = self.local_motion_planner.MotionPlanner(self.px, self.py,
-            #                                                                            self.target_vel,
-            #                                                                            self.x, self.y, self.yaw, self.v,
-            #                                                                            self.lateral_tracker)
+            #     paths, best_index, best_path = \
+            #         self.local_motion_planner.MotionPlanner(self.px, self.py, self.target_vel,
+            #                                                 self.x, self.y, self.yaw, self.v, self.lateral_tracker)
+            # if paths is None:
             paths = 0
             best_index = 0
             best_path = 0
             ## Motion Controllers:
-            if i % 10 == 0:
+            if i % 2 == 0:
                 self.delta, self.target_id, self.crosstrack_error = \
                     self.lateral_tracker.stanley_control(self.x, self.y, self.yaw, self.v, self.delta)
                 self.total_vel_error, self.torque_vec = \

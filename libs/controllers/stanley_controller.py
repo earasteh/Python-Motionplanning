@@ -41,32 +41,34 @@ class StanleyController:
         self.max_steer = max_steer
         self.L = wheelbase
 
-        self.px = path_x
-        self.py = path_y
-        self.pyaw = path_yaw
+        # self.px = path_x
+        # self.py = path_y
+        # self.pyaw = path_yaw
 
-    def update_waypoints(self, waypoints):
-        self.px = []
-        self.py = []
+    @staticmethod
+    def update_waypoints(waypoints):
+        px = []
+        py = []
         for i in range(len(waypoints)):
-            self.px.append(waypoints[i][0])
-            self.py.append(waypoints[i][1])
+            px.append(waypoints[i][0])
+            py.append(waypoints[i][1])
+        return px, py
 
-    def find_target_path_id(self, x, y, yaw):
+    def find_target_path_id(self, x, y, yaw, px, py):
         # Calculate position of the front axle
-        fx = x #+ self.L * np.cos(yaw)
-        fy = y #+ self.L * np.sin(yaw)
+        fx = x + self.L * np.cos(yaw)
+        fy = y + self.L * np.sin(yaw)
 
-        dx = fx - self.px  # Find the x-axis of the front axle relative to the path
-        dy = fy - self.py  # Find the y-axis of the front axle relative to the path
+        dx = fx - px  # Find the x-axis of the front axle relative to the path
+        dy = fy - py  # Find the y-axis of the front axle relative to the path
 
         d = np.hypot(dx, dy)  # Find the distance from the front axle to the path
         target_index = np.argmin(d)  # Find the shortest distance in the array
 
         return target_index, dx[target_index], dy[target_index], d[target_index]
 
-    def calculate_yaw_term(self, target_index, yaw):
-        yaw_error = normalise_angle(self.pyaw[target_index] - yaw)
+    def calculate_yaw_term(self, target_index, yaw, pyaw):
+        yaw_error = normalise_angle(pyaw[target_index] - yaw)
 
         return yaw_error
 
@@ -89,9 +91,9 @@ class StanleyController:
 
         return steering_delay_error
 
-    def stanley_control(self, x, y, yaw, target_velocity, steering_angle):
-        target_index, dx, dy, absolute_error = self.find_target_path_id(x, y, yaw)
-        yaw_error = self.calculate_yaw_term(target_index, yaw)
+    def stanley_control(self, x, y, yaw, px, py, pyaw, target_velocity, steering_angle):
+        target_index, dx, dy, absolute_error = self.find_target_path_id(x, y, yaw, px, py)
+        yaw_error = self.calculate_yaw_term(target_index, yaw, pyaw)
         crosstrack_steering_error, crosstrack_error = self.calculate_crosstrack_term(target_velocity, yaw, dx, dy,
                                                                                      absolute_error)
         yaw_rate_damping = self.calculate_yaw_rate_term(target_velocity, steering_angle)

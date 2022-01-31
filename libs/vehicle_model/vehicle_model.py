@@ -66,7 +66,7 @@ param = VehicleParameters()  # parameters
 
 class VehicleModel:
 
-    def __init__(self, wheelbase=1.0, max_steer=0.7, dt=0.05, c_r=0.0, c_a=0.0):
+    def __init__(self, wheelbase=1.0, max_steer=0.7, dt=0.05):
         """
         2D Kinematic Bicycle Model
 
@@ -74,8 +74,6 @@ class VehicleModel:
         :param wheelbase:       (float) vehicle's wheelbase [m]
         :param max_steer:       (float) vehicle's steering limits [rad]
         :param dt:              (float) discrete time period [s]
-        :param c_r:             (float) vehicle's coefficient of resistance 
-        :param c_a:             (float) vehicle's aerodynamic coefficient
     
         At every time step  
         :param x:               (float) vehicle's x-coordinate [m]
@@ -95,10 +93,8 @@ class VehicleModel:
         self.dt = dt
         self.wheelbase = wheelbase
         self.max_steer = max_steer
-        self.c_r = c_r
-        self.c_a = c_a
 
-    def kinematic_model(self, x, y, yaw, velocity, throttle, delta):
+    def kinematic_model(self, x, y, yaw, velocity, throttle, delta, p):
         """
         The original kinematic bicycle model
         :param x:
@@ -110,7 +106,7 @@ class VehicleModel:
         :return:
         """
         # Compute the local velocity in the x-axis
-        f_load = velocity * (self.c_r + self.c_a * velocity)
+        f_load = velocity * (p.c_r + p.c_a * velocity)
         velocity += self.dt * (throttle - f_load)
 
         # Compute the radius and angular velocity of the kinematic bicycle model
@@ -237,6 +233,13 @@ class VehicleModel:
         p.DFR = mumaxFR
         p.DRL = mumaxRL
         p.DRR = mumaxRR
+
+        # Messing with the tire parameters (under/oversteer)
+        # p.CRR = 0.8 * p.CFR
+        # p.CRL = 0.8 * p.CFL
+        #
+        # p.BRR = 0.8 * p.BFR
+        # p.BRL = 0.8 * p.BFL
 
         ## Normal forces (static forces)
         fFLz0 = p.b / (p.a + p.b) * p.m * g / 2

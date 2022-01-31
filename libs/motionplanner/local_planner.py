@@ -329,7 +329,7 @@ class LocalPlanner:
     def motionplanner_datatranslation(px, py, target_vel, x, y, yaw, v):
         """
         This helper function helps translating the differences between the data in the vehicle model program vs.
-        the motion planner written by the coursera guys
+        the motion planner written by the coursera
         :param px:
         :param py:
         :param target_vel:
@@ -349,6 +349,17 @@ class LocalPlanner:
         return waypoints, ego_state
 
     def MotionPlanner(self, px, py, target_vel, x, y, yaw, v, LateralTrackerObj):
+        """
+        :param px:
+        :param py:
+        :param target_vel:
+        :param x:
+        :param y:
+        :param yaw:
+        :param v:
+        :param LateralTrackerObj:
+        :return:
+        """
         waypoints, ego_state = LocalPlanner.motionplanner_datatranslation(px, py, target_vel, x, y, yaw, v)
         closest_len, closest_index = get_closest_index(waypoints, ego_state)
         goal_index = self.get_goal_index(waypoints, ego_state, closest_len, closest_index)
@@ -380,7 +391,8 @@ class LocalPlanner:
                 wp_distance.append(
                     np.sqrt((local_waypoints_np[i, 0] - local_waypoints_np[i - 1, 0]) ** 2 +
                             (local_waypoints_np[i, 1] - local_waypoints_np[i - 1, 1]) ** 2))
-            wp_distance.append(0)  # last distance is 0 because it is the distance from the last waypoint to the last waypoint
+            wp_distance.append(0)  # last distance is 0 because it is the distance from the
+            # last waypoint to the last waypoint
             # Linearly interpolate between waypoints and store in a list
             wp_interp = []  # interpolated values (rows = waypoints, columns = [x, y, v])
             for i in range(local_waypoints_np.shape[0] - 1):

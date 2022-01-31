@@ -99,7 +99,6 @@ class Env:
         :param ds:
         :return:
         """
-
         xc1, yc1 = corner
         xc2 = xc1 + length
         yc2 = yc1 + width
@@ -179,7 +178,7 @@ world.road_bound_add(x4, y4, 'left')
 world.road_middle()
 
 # Construct an obstacle
-xo, yo = Env.box([80, 7], 6, 5, 0.1)
+xo, yo = Env.box([80, 7], 6, 5, 0.2)
 world.obstacle_add(xo, yo)
 
 

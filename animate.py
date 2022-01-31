@@ -4,6 +4,7 @@ from matplotlib.animation import FuncAnimation
 from libs.utils.car_description import Description
 from libs.utils.env import world  # Importing road definition
 from libs.vehicle_model.drive import Veh_SIM_NUM, Control_SIM_NUM, Car
+from libs.utils.plots import plot_results, data_cleaning
 
 class Simulation:
 
@@ -21,7 +22,7 @@ def main():
     sim = Simulation()
     path = world.path
 
-    car = Car(path.px[1800], path.py[1800], path.pyaw[1800], path.px, path.py, path.pyaw, sim.veh_dt)
+    car = Car(path.px[1000], path.py[1000], path.pyaw[1000], path.px, path.py, path.pyaw, sim.veh_dt)
     desc = Description(car.overall_length, car.overall_width, car.rear_overhang, car.tyre_diameter, car.tyre_width,
                        car.axle_track, car.wheelbase)
 
@@ -106,7 +107,7 @@ def main():
     # anim.save('resources/animation.gif', fps=100)   #Uncomment to save the animation
     plt.show()
 
-    # plot_results(data_cleaning(car.DataLog))
+    plot_results(data_cleaning(car.DataLog))
 
 if __name__ == '__main__':
     main()
