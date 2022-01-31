@@ -3,26 +3,32 @@
 [![build](https://github.com/earasteh/Python-Motionplanning/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/earasteh/Python-Motionplanning/actions/workflows/build.yml)
 
 
+## Abstract
+This project is using a conformal lattice planner to generate paths for the vehicle to follow. The vehicle uses a 
+Stanley controller for its lateral control tracking a PID controller for its longitudinal control. 
+The vehicle model is 7 DoF planar bicycle model with Pacjeka tire models and algebraic normal forces.
+
 <div align="center">
 	<img src="resources/animation.gif" />
 </div>
-
-
-The animation part of this project is taken from https://github.com/winstxnhdw/KinematicBicycleModel 
-and the motion planning part is taken from Coursera's class on motion planning.
-
-
 
 Added features:
 - Conformal Lattice Planner
 - A 7 DoF vehicle model with Pacejka magic tire formula with algebraic normal forces
 - Longitudinal PID controller
+- Stanley Control for lateral tracking
 - 4th-Order Runge-Kutta (RK4) is added for the integration of the vehicle model instead of Euler
+
+The animation part of this project is taken from https://github.com/winstxnhdw/KinematicBicycleModel 
+and the motion planning and controller part is taken from Coursera's class on motion planning.
 
 To Do:
 - Motion controllers need more tuning (not working in a higher speeds)
+- Change RK4 to scipy.odeint which uses FORTRAN and is faster
+- Change the tracker to MPC
+Optional:
+- Animation can be moved to pygame
 
-## Abstract
 
 ## Advantages
 
