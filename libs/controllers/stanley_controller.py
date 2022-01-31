@@ -6,7 +6,8 @@ from libs.utils.normalise_angle import normalise_angle
 class StanleyController:
 
     def __init__(self, control_gain=2.5, softening_gain=1.0, yaw_rate_gain=0.0, steering_damp_gain=0.0,
-                 max_steer=np.deg2rad(24), wheelbase=0.0, path_x=None, path_y=None, path_yaw=None):
+                 max_steer=np.deg2rad(24), wheelbase=0.0,
+                 waypoints=None):
         """
         Stanley Controller
 
@@ -41,70 +42,91 @@ class StanleyController:
         self.max_steer = max_steer
         self.L = wheelbase
 
+        self._waypoints = waypoints
+        self._lookahead_distance = 4.0
+        self.cross_track_deadband = 0.01
+
         # self.px = path_x
         # self.py = path_y
         # self.pyaw = path_yaw
 
-    @staticmethod
-    def update_waypoints(waypoints):
-        px = []
-        py = []
-        for i in range(len(waypoints)):
-            px.append(waypoints[i][0])
-            py.append(waypoints[i][1])
-        return px, py
+    def update_waypoints(self, new_waypoints):
+        self._waypoints = new_waypoints
 
-    def find_target_path_id(self, x, y, yaw, px, py):
-        # Calculate position of the front axle
-        fx = x + self.L * np.cos(yaw)
-        fy = y + self.L * np.sin(yaw)
+    def get_lookahead_index(self, x, y, lookahead_distance):
+        min_idx = 0
+        min_dist = float("inf")
+        for i in range(len(self._waypoints)):
+            dist = np.linalg.norm(np.array([
+                self._waypoints[i][0] - x,
+                self._waypoints[i][1] - y]))
+            if dist < min_dist:
+                min_dist = dist
+                min_idx = i
 
-        dx = fx - px  # Find the x-axis of the front axle relative to the path
-        dy = fy - py  # Find the y-axis of the front axle relative to the path
+        total_dist = min_dist
+        lookahead_idx = min_idx
+        for i in range(min_idx + 1, len(self._waypoints)):
+            if total_dist >= lookahead_distance:
+                break
+            total_dist += np.linalg.norm(np.array([
+                self._waypoints[i][0] - self._waypoints[i - 1][0],
+                self._waypoints[i][1] - self._waypoints[i - 1][1]]))
+            lookahead_idx = i
+        return lookahead_idx
 
-        d = np.hypot(dx, dy)  # Find the distance from the front axle to the path
-        target_index = np.argmin(d)  # Find the shortest distance in the array
+    def stanley_control(self, x, y, yaw, current_velocity):
+        """
+        :param x:
+        :param y:
+        :param yaw:
+        :param current_velocity:
+        :return: steering output, target index, crosstrack error
+        """
+        crosstrack_error = float("inf")
+        crosstrack_vector = np.array([float("inf"), float("inf")])
 
-        return target_index, dx[target_index], dy[target_index], d[target_index]
+        ce_idx = self.get_lookahead_index(x, y, self._lookahead_distance)
+        crosstrack_vector = np.array([self._waypoints[ce_idx][0] - \
+                                      x - self._lookahead_distance * np.cos(yaw),
+                                      self._waypoints[ce_idx][1] - \
+                                      y - self._lookahead_distance * np.sin(yaw)])
+        crosstrack_error = np.linalg.norm(crosstrack_vector)
 
-    def calculate_yaw_term(self, target_index, yaw, pyaw):
-        yaw_error = normalise_angle(pyaw[target_index] - yaw)
+        if crosstrack_error < self.cross_track_deadband:
+            crosstrack_error = 0
 
-        return yaw_error
+        # Compute the sign of the crosstrack error
+        crosstrack_heading = np.arctan2(crosstrack_vector[1], crosstrack_vector[0])
+        crosstrack_heading_error = crosstrack_heading - yaw
+        crosstrack_heading_error = (crosstrack_heading_error + np.pi) % (2 * np.pi) - np.pi
+        crosstrack_sign = np.sign(crosstrack_heading_error)
 
-    def calculate_crosstrack_term(self, current_velocity, yaw, dx, dy, absolute_error):
-        front_axle_vector = [np.sin(yaw), -np.cos(yaw)]
-        nearest_path_vector = [dx, dy]
-        crosstrack_error = np.sign(np.dot(nearest_path_vector, front_axle_vector)) * absolute_error
+        # Compute heading relative to trajectory (heading error)
+        # First ensure that we are not at the last index. If we are,
+        # flip back to the first index (loop the waypoints)
+        if ce_idx < len(self._waypoints) - 1:
+            vect_wp0_to_wp1 = np.array(
+                [self._waypoints[ce_idx + 1][0] - self._waypoints[ce_idx][0],
+                 self._waypoints[ce_idx + 1][1] - self._waypoints[ce_idx][1]])
+            trajectory_heading = np.arctan2(vect_wp0_to_wp1[1],
+                                            vect_wp0_to_wp1[0])
+        else:
+            vect_wp0_to_wp1 = np.array(
+                [self._waypoints[0][0] - self._waypoints[-1][0],
+                 self._waypoints[0][1] - self._waypoints[-1][1]])
+            trajectory_heading = np.arctan2(vect_wp0_to_wp1[1],
+                                            vect_wp0_to_wp1[0])
 
-        crosstrack_steering_error = np.arctan2((self.k * crosstrack_error), (self.k_soft + current_velocity))
+        heading_error = trajectory_heading - yaw
+        heading_error = (heading_error + np.pi) % (2 * np.pi) - np.pi
+        steering_output = heading_error + \
+                          np.arctan(self.k * crosstrack_sign * crosstrack_error / \
+                                    (current_velocity + self.k_soft))
 
-        return crosstrack_steering_error, crosstrack_error
+        limited_steering_angle = np.clip(steering_output, -self.max_steer, self.max_steer)
 
-    def calculate_yaw_rate_term(self, target_velocity, steering_angle):
-        yaw_rate_error = self.k_yaw_rate * (-target_velocity * np.sin(steering_angle)) / self.L
-
-        return yaw_rate_error
-
-    def calculate_steering_delay_term(self, computed_steering_angle, previous_steering_angle):
-        steering_delay_error = self.k_damp_steer * (computed_steering_angle - previous_steering_angle)
-
-        return steering_delay_error
-
-    def stanley_control(self, x, y, yaw, px, py, pyaw, target_velocity, steering_angle):
-        target_index, dx, dy, absolute_error = self.find_target_path_id(x, y, yaw, px, py)
-        yaw_error = self.calculate_yaw_term(target_index, yaw, pyaw)
-        crosstrack_steering_error, crosstrack_error = self.calculate_crosstrack_term(target_velocity, yaw, dx, dy,
-                                                                                     absolute_error)
-        yaw_rate_damping = self.calculate_yaw_rate_term(target_velocity, steering_angle)
-
-        desired_steering_angle = yaw_error + crosstrack_steering_error + yaw_rate_damping
-
-        # Constrains steering angle to the vehicle limits
-        desired_steering_angle += self.calculate_steering_delay_term(desired_steering_angle, steering_angle)
-        limited_steering_angle = np.clip(desired_steering_angle, -self.max_steer, self.max_steer)
-
-        return limited_steering_angle, target_index, crosstrack_error
+        return limited_steering_angle, ce_idx, crosstrack_error
 
 
 class LongitudinalController:

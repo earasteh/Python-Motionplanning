@@ -13,7 +13,6 @@ from libs.motionplanner import collision_checker
 from libs.motionplanner import velocity_planner
 from math import sin, cos, pi
 from multiprocessing import Pool as ThreadPool
-from libs.utils.env import world
 
 # Path interpolation parameters
 INTERP_MAX_POINTS_PLOT = 10  # number of points used for displaying
@@ -348,7 +347,7 @@ class LocalPlanner:
 
         return waypoints, ego_state
 
-    def MotionPlanner(self, px, py, target_vel, x, y, yaw, v, LateralTrackerObj):
+    def MotionPlanner(self, px, py, target_vel, x, y, yaw, v, LateralTrackerObj, obstacle):
         """
         :param px:
         :param py:
@@ -369,7 +368,7 @@ class LocalPlanner:
         paths = transform_paths(paths, ego_state)
         pool = ThreadPool(processes=len(paths))
         collision_check_array = pool.starmap(self._collision_checker.collision_check,
-                                              zip(paths, itertools.repeat(world.obstacle_xy)))
+                                              zip(paths, itertools.repeat(obstacle)))
         # Compute the best local path.
         best_index = self._collision_checker.select_best_path_index(paths, collision_check_array, goal_state)
         if best_index is None:
@@ -411,9 +410,9 @@ class LocalPlanner:
             # add last waypoint at the end
             wp_interp.append(list(local_waypoints_np[-1]))
             # update the other controller values and controls
-            px_new, py_new = LateralTrackerObj.update_waypoints(wp_interp) # new points to follow
+            LateralTrackerObj.update_waypoints(wp_interp) # new points to follow
 
-        return paths, best_index, best_path, px_new, py_new
+        return paths, best_index, best_path
 
 
 def transform_paths(paths, ego_state):
