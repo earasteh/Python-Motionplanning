@@ -21,7 +21,7 @@ Control_SIM_NUM = Veh_SIM_NUM / 10
 NUM_PATHS = 7
 BP_LOOKAHEAD_BASE = 8.0  # m
 BP_LOOKAHEAD_TIME = 2.0  # s
-PATH_OFFSET = 1.6  # m
+PATH_OFFSET = 1.5  # m
 CIRCLE_OFFSETS = [-1.0, 1.0, 3.0]  # m
 CIRCLE_RADII = [1.5, 1.5, 1.5]  # m
 TIME_GAP = 1.0  # s
@@ -32,7 +32,7 @@ STOP_LINE_BUFFER = 3.5  # m
 LEAD_VEHICLE_LOOKAHEAD = 20.0  # m
 LP_FREQUENCY_DIVISOR = 2  # Frequency divisor to make the local planner operate at a lower
 # frequency than the controller (which operates at the simulation frequency). Must be a natural number.
-LOOKAHEAD = 30
+LOOKAHEAD = 25
 
 p = VehicleParameters()
 
@@ -43,12 +43,12 @@ class Car:
         # Variable to log all the data
         self.DataLog = np.zeros((Veh_SIM_NUM * 2500, 45))
         # Model parameters
-        init_vel = 20.0
+        init_vel = 15.0
         self.x = init_x
         self.y = init_y
         self.yaw = init_yaw
         self.prev_vel = self.v = init_vel
-        self.target_vel = 20.0
+        self.target_vel = 15.0
         self.total_vel_error = 0
         self.delta = 0.0
         self.omega = 0.0
@@ -68,7 +68,7 @@ class Car:
         self.px = px
         self.py = py
         self.pyaw = pyaw
-        self.k = 8
+        self.k = 8*3
         self.ksoft = 1.0
         self.kyaw = 0
         self.ksteer = 0
@@ -110,7 +110,7 @@ class Car:
     def drive(self, frame):
         for i in range(Veh_SIM_NUM):
             # Motion Planner:
-            if i % 40 == 0:
+            if i % 20 == 0:
                 paths, best_index, best_path = \
                     self.local_motion_planner.MotionPlanner(self.px, self.py, self.target_vel,
                                                             self.x, self.y, self.yaw, self.v,

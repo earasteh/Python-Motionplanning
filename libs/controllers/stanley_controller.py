@@ -43,7 +43,7 @@ class StanleyController:
         self.L = wheelbase
 
         self._waypoints = waypoints
-        self._lookahead_distance = 6.0
+        self._lookahead_distance = 4.0
         self.cross_track_deadband = 0.01
 
         # self.px = path_x
@@ -156,7 +156,7 @@ class LongitudinalController:
         if current_velocity <= 0.01:
             tau = abs(tau)
 
-        return v_total_error_new, [tau, tau, 0, 0]
+        return v_total_error_new, [tau, tau, tau, tau]
 
 
 def main():

@@ -16,7 +16,7 @@ class Simulation:
         self.veh_dt = self.frame_dt / Veh_SIM_NUM
         self.controller_dt = self.frame_dt / Control_SIM_NUM
         self.map_size = 40
-        self.frames = 100
+        self.frames = 60
         self.loop = False
 
 
@@ -24,7 +24,7 @@ def main():
     sim = Simulation()
     path = world.path
 
-    car = Car(path.px[800], path.py[800], path.pyaw[800], path.px, path.py, path.pyaw, sim.veh_dt)
+    car = Car(path.px[0], path.py[0], path.pyaw[0], path.px, path.py, path.pyaw, sim.veh_dt)
     desc = Description(car.overall_length, car.overall_width, car.rear_overhang, car.tyre_diameter, car.tyre_width,
                        car.axle_track, car.wheelbase)
 
@@ -38,9 +38,8 @@ def main():
                  color='gray')
     ax.plot(world.bound_xl, world.bound_yl, color='black')
     ax.plot(world.bound_xr, world.bound_yr, color='black')
-    _ = plt.fill(world.obstacle_x, world.obstacle_y, color='red')
-
-    ax.plot(path.px, path.py, '--', color='gold')
+    ax.plot(path.px, path.py, '--', color='white', zorder=1)
+    _ = plt.fill(world.obstacle_x, world.obstacle_y, color='black', zorder=2)
 
     annotation = ax.annotate(f'{car.x:.1f}, {car.y:.1f}', xy=(car.x, car.y + 5), color='black', annotation_clip=False)
 
@@ -97,8 +96,8 @@ def main():
 
         return outline, fr, rr, fl, rl, rear_axle, CLP_axes
 
-    _ = FuncAnimation(fig, animate, frames=sim.frames, interval=interval, repeat=sim.loop)
-    # anim.save('resources/animation.gif', fps=10)   #Uncomment to save the animation
+    anim = FuncAnimation(fig, animate, frames=sim.frames, interval=interval, repeat=sim.loop)
+    anim.save('resources/animation.gif', fps=10)   #Uncomment to save the animation
     plt.show()
 
     plot_results(data_cleaning(car.DataLog))
