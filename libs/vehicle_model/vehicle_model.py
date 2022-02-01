@@ -422,7 +422,6 @@ class VehicleModel:
                    fFLz, fFRz, fRLz, fRRz,
                    sFL, sFR, sRL, sRR, fFLxt, fFLyt])
 
-        # return [state_dot, vx, vy, ax, ay, x, y, yaw, U, state_update, outputs]
         return [state_dot, vx, vy, ax, ay, outputs, axc, ayc]
 
     def planar_model_RK4(self, state, tire_torques, mu_max, delta, p, ax_prev, ay_prev):

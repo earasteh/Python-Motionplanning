@@ -16,7 +16,7 @@ class Simulation:
         self.veh_dt = self.frame_dt / Veh_SIM_NUM
         self.controller_dt = self.frame_dt / Control_SIM_NUM
         self.map_size = 40
-        self.frames = 60
+        self.frames = 40
         self.loop = False
 
 
@@ -24,7 +24,7 @@ def main():
     sim = Simulation()
     path = world.path
 
-    car = Car(path.px[0], path.py[0], path.pyaw[0], path.px, path.py, path.pyaw, sim.veh_dt)
+    car = Car(path.px[10], path.py[10], path.pyaw[10], path.px, path.py, path.pyaw, sim.veh_dt)
     desc = Description(car.overall_length, car.overall_width, car.rear_overhang, car.tyre_diameter, car.tyre_width,
                        car.axle_track, car.wheelbase)
 
@@ -96,8 +96,8 @@ def main():
 
         return outline, fr, rr, fl, rl, rear_axle, CLP_axes
 
-    anim = FuncAnimation(fig, animate, frames=sim.frames, interval=interval, repeat=sim.loop)
-    anim.save('resources/animation.gif', fps=10)   #Uncomment to save the animation
+    _ = FuncAnimation(fig, animate, frames=sim.frames, interval=interval, repeat=sim.loop)
+    # anim.save('resources/animation.gif', fps=10)   #Uncomment to save the animation
     plt.show()
 
     plot_results(data_cleaning(car.DataLog))
