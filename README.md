@@ -23,12 +23,11 @@ The animation part of this project is taken from https://github.com/winstxnhdw/K
 and the motion planning and controller part is taken from Coursera's class on motion planning.
 
 To Do:
-- Motion controllers need more tuning (not working in a higher speeds)
-- Change RK4 to scipy.odeint which uses FORTRAN and is faster
+- Motion controllers need more tuning (not working in a higher speeds due to limitations of decoupled controllers)
 - Change the tracker to MPC
 Optional:
+- Change RK4 to scipy.odeint which uses FORTRAN and is faster
 - Animation can be moved to pygame
-
 
 ## Advantages
 
