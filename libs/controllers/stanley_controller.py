@@ -43,7 +43,7 @@ class StanleyController:
         self.L = wheelbase
 
         self._waypoints = waypoints
-        self._lookahead_distance = 4.0
+        self._lookahead_distance = 5.0
         self.cross_track_deadband = 0.01
 
         # self.px = path_x

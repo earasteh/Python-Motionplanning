@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from libs.utils.env import world
 
 """
 This file cleans and labels the data and then plots all the results
@@ -31,21 +32,27 @@ def plot_results(DataLog_pd):
     plt.plot(DataLog_pd['time'], DataLog_pd['U'])
     plt.xlabel('Time (Sec.)')
     plt.ylabel('Forward Velocity (m/s)')
+    plt.savefig('results/u.png')
 
     plt.figure()
-    plt.title('Lateral Velocity')
+    fig_name = 'Lateral Velocity'
+    plt.title(fig_name)
     plt.plot(DataLog_pd['time'], DataLog_pd['V'])
     plt.xlabel('Time (Sec.)')
     plt.ylabel('Lateral Velocity (m/s)')
+    plt.savefig('results/'+fig_name+'.png')
 
     plt.figure()
-    plt.title('Yaw rate')
+    fig_name = 'Yaw rate'
+    plt.title(fig_name)
     plt.plot(DataLog_pd['time'], DataLog_pd['yaw_dot'])
     plt.xlabel('Time (Sec.)')
     plt.ylabel('Yaw rate (rad/sec)')
+    plt.savefig('results/'+fig_name+'.png')
 
     plt.figure()
-    plt.title('Lateral Acceleration')
+    fig_name = 'Lateral Acceleration'
+    plt.title(fig_name)
     plt.plot(DataLog_pd['time'], DataLog_pd['V_dot'])
     plt.xlabel('Time (Sec.)')
     plt.ylabel('Lateral Acceleration (m/s^2)')
@@ -56,6 +63,7 @@ def plot_results(DataLog_pd):
     plt.legend(['x-t', 'y-t'])
     plt.xlabel('Time (Sec.)')
     plt.ylabel('Force (N)')
+    plt.savefig('results/'+fig_name+'.png')
 
     # plt.figure()
     # plt.title('Longitudinal Tire Forces')
@@ -68,7 +76,8 @@ def plot_results(DataLog_pd):
     # plt.ylabel('Force (N)')
 
     plt.figure()
-    plt.title('Lateral Tire Forces')
+    fig_name ='Lateral Tire Forces'
+    plt.title(fig_name)
     plt.plot(DataLog_pd['time'], DataLog_pd['Fy_FL'])
     plt.plot(DataLog_pd['time'], DataLog_pd['Fy_FR'])
     plt.plot(DataLog_pd['time'], DataLog_pd['Fy_RL'])
@@ -76,9 +85,11 @@ def plot_results(DataLog_pd):
     plt.legend(['FL', 'FR', 'RL', 'RR'])
     plt.xlabel('Time (Sec.)')
     plt.ylabel('Force (N)')
+    plt.savefig('results/'+fig_name+'.png')
 
     plt.figure()
-    plt.title('Normal Tire Forces')
+    fig_name ='Normal Tire Forces'
+    plt.title(fig_name)
     plt.plot(DataLog_pd['time'], DataLog_pd['Fz_FL'])
     plt.plot(DataLog_pd['time'], DataLog_pd['Fz_FR'])
     plt.plot(DataLog_pd['time'], DataLog_pd['Fz_RL'])
@@ -86,6 +97,7 @@ def plot_results(DataLog_pd):
     plt.legend(['FL', 'FR', 'RL', 'RR'])
     plt.xlabel('Time (Sec.)')
     plt.ylabel('Force (N)')
+    plt.savefig('results/'+fig_name+'.png')
 
     # plt.figure()
     # plt.title('Torque at each wheel')
@@ -134,19 +146,25 @@ def plot_results(DataLog_pd):
     # plt.ylabel('Angular Vel. (rad/Sec)')
 
     plt.figure()
-    plt.title('Steering Angle')
+    fig_name ='Steering Angle'
+    plt.title(fig_name)
     plt.plot(DataLog_pd['time'], DataLog_pd['delta'] * 180 / np.pi)
     plt.xlabel('Time (Sec.)')
     plt.ylabel('Steering angle (deg)')
+    plt.savefig('results/'+fig_name+'.png')
 
-    plt.figure()
-    plt.title('Cross Track Error')
+    fig, ax = plt.subplots()
+    ax.set_xlim(0.1, 5)
+    fig_name ='Cross Track Error'
+    plt.title(fig_name)
     plt.plot(DataLog_pd['time'], DataLog_pd['crosstrack'])
     plt.xlabel('Time (Sec.)')
     plt.ylabel('Cross Track Error (m)')
+    plt.savefig('results/'+fig_name+'.png')
 
     plt.figure()
-    plt.title('Combined slip')
+    fig_name = 'Combined slip'
+    plt.title(fig_name)
     plt.subplot(2, 2, 1)
     plt.plot(DataLog_pd['time'], DataLog_pd['sFL'])
     plt.legend(['FL'])
@@ -167,5 +185,21 @@ def plot_results(DataLog_pd):
     plt.legend(['RR'])
     plt.xlabel('Time (Sec.)')
     plt.ylabel('Slip')
+    plt.savefig('results/'+fig_name+'.png')
+    
+    fig, ax = plt.subplots(figsize=(10, 6))
+    plt.grid()
+    fig_name ='Trajectory of the vehicle'
+    plt.title(fig_name)
+    plt.plot(DataLog_pd['x'], DataLog_pd['y'], color='green')
+    plt.plot(world.xm, world.ym, 'k--')
+    plt.fill(world.obstacle_x, world.obstacle_y, color='red', zorder=2)
+    ax.set_xlim(-10, 100)
+    ax.set_ylim(-5, 25)
+    ax.set_aspect('equal')
+    ax.legend(['Generated Path', 'Ref'])
+    plt.xlabel('X (meters)')
+    plt.ylabel('Y (meters)')
+    plt.savefig('results/'+fig_name+'.png')
 
     plt.show()

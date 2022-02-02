@@ -10,13 +10,13 @@ from libs.utils.plots import plot_results, data_cleaning
 class Simulation:
 
     def __init__(self):
-        fps = 10.0
-
+        fps = 100.0
+        t_final = 5
         self.frame_dt = 1 / fps
         self.veh_dt = self.frame_dt / Veh_SIM_NUM
         self.controller_dt = self.frame_dt / Control_SIM_NUM
         self.map_size = 40
-        self.frames = 60
+        self.frames = int(fps * t_final)
         self.loop = False
 
 
@@ -96,8 +96,8 @@ def main():
 
         return outline, fr, rr, fl, rl, rear_axle, CLP_axes
 
-    anim = FuncAnimation(fig, animate, frames=sim.frames, interval=interval, repeat=sim.loop)
-    anim.save('resources/animation.gif', fps=10)   #Uncomment to save the animation
+    _ = FuncAnimation(fig, animate, frames=sim.frames, interval=interval, repeat=sim.loop)
+    # anim.save('resources/animation.gif', fps=10)   #Uncomment to save the animation
     plt.show()
 
     plot_results(data_cleaning(car.DataLog))

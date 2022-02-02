@@ -68,7 +68,7 @@ class Car:
         self.px = px
         self.py = py
         self.pyaw = pyaw
-        self.k = 8*3
+        self.k = 10
         self.ksoft = 1.0
         self.kyaw = 0
         self.ksteer = 0
@@ -76,6 +76,8 @@ class Car:
         self.target_id = None
         self.x_del = [0]
         self._prev_paths = 0
+        self._prev_best_index = 0
+        self._prev_best_path = None
 
         # Longitudinal Tracker parameters
         self.k_v = 1000
@@ -108,18 +110,20 @@ class Car:
         self.long_tracker = LongitudinalController(self.k_v, self.k_i, self.k_d)
 
     def drive(self, frame):
+        # Motion Planner:
         for i in range(Veh_SIM_NUM):
-            # Motion Planner:
-            if i % 20 == 0:
+            if i % 50 == 0:
                 paths, best_index, best_path = \
                     self.local_motion_planner.MotionPlanner(self.px, self.py, self.target_vel,
                                                             self.x, self.y, self.yaw, self.v,
                                                             self.lateral_tracker, world.obstacle_xy)
                 self._prev_paths = paths
-                if paths is None:
-                    paths = self._prev_paths
-                    best_index = 0
-                    best_path = 0
+                self._prev_best_index = best_index
+                self._prev_best_path = best_path
+            else:
+                paths = self._prev_paths
+                best_index = self._prev_best_index
+                best_path = self._prev_best_path
             ## Motion Controllers:
             if i % 10 == 0:
                 self.delta, self.target_id, self.crosstrack_error = \
@@ -130,7 +134,7 @@ class Car:
                 self.prev_vel = self.v
 
                 # Filter the delta output
-                self.x_del.append((1 - 1e-4 / (2*0.001)) * self.x_del[-1] + 1e-4 / (2*0.001) * self.delta)
+                self.x_del.append((1 - 1e-5 / (2*0.001)) * self.x_del[-1] + 1e-5 / (2*0.001) * self.delta)
                 self.delta = self.x_del[-1]
 
             ## Vehicle model

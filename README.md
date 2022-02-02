@@ -18,6 +18,7 @@ Added features:
 - Longitudinal PID controller
 - Stanley Control for lateral tracking
 - 4th-Order Runge-Kutta (RK4) is added for the integration of the vehicle model instead of Euler
+- Multiprocessing added to speed up the collision checking process (the algorithm can still be further improved)
 
 The animation part of this project is taken from https://github.com/winstxnhdw/KinematicBicycleModel 
 and the motion planning and controller part is taken from Coursera's class on motion planning.
@@ -30,8 +31,14 @@ Optional:
 - Animation can be moved to pygame
 
 ## Advantages
-
+- The motion controllers and motion planner is easy to implement in real scenarios
+- This platform can be used for developing and testing further motion planning and motion control problems
+- The lattice planner can be modified to include other cost functions
 ## Limitations
+- The controllers are unaware of nonlinear tire saturations and limiations. This will drive the vehicle to unstable 
+situations which can not be recovered from
+- The controllers and conformal lattice planner both have a lot of tuning parameters which can be hard to tune sometimes
+
 
 ## Requirements
 Numpy, pandas, scipy, multiprocessing

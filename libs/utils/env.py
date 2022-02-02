@@ -178,7 +178,7 @@ world.road_bound_add(x4, y4, 'left')
 world.road_middle()
 
 # Construct an obstacle
-xo, yo = Env.box([60, 7], 6, 5, 0.2)
+xo, yo = Env.box([30, 7], 6, 4.5, 0.2)
 world.obstacle_add(xo, yo)
 
 
