@@ -16,7 +16,11 @@ class Simulation:
         self.veh_dt = self.frame_dt / Veh_SIM_NUM
         self.controller_dt = self.frame_dt / Control_SIM_NUM
         self.map_size = 40
+<<<<<<< HEAD
         self.frames = int(fps * t_final)
+=======
+        self.frames = 40
+>>>>>>> 5ecca32458f922534b861a7cfec6a51d1ab48caa
         self.loop = False
 
 
@@ -24,7 +28,7 @@ def main():
     sim = Simulation()
     path = world.path
 
-    car = Car(path.px[0], path.py[0], path.pyaw[0], path.px, path.py, path.pyaw, sim.veh_dt)
+    car = Car(path.px[10], path.py[10], path.pyaw[10], path.px, path.py, path.pyaw, sim.veh_dt)
     desc = Description(car.overall_length, car.overall_width, car.rear_overhang, car.tyre_diameter, car.tyre_width,
                        car.axle_track, car.wheelbase)
 
