@@ -32,7 +32,7 @@ STOP_LINE_BUFFER = 3.5  # m
 LEAD_VEHICLE_LOOKAHEAD = 20.0  # m
 LP_FREQUENCY_DIVISOR = 2  # Frequency divisor to make the local planner operate at a lower
 # frequency than the controller (which operates at the simulation frequency). Must be a natural number.
-LOOKAHEAD = 25
+LOOKAHEAD = 30
 
 p = VehicleParameters()
 
@@ -43,12 +43,12 @@ class Car:
         # Variable to log all the data
         self.DataLog = np.zeros((Veh_SIM_NUM * 2500, 45))
         # Model parameters
-        init_vel = 15.0
+        init_vel = 25.0
         self.x = init_x
         self.y = init_y
         self.yaw = init_yaw
         self.prev_vel = self.v = init_vel
-        self.target_vel = 15.0
+        self.target_vel = init_vel
         self.total_vel_error = 0
         self.delta = 0.0
         self.omega = 0.0

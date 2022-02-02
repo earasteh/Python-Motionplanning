@@ -11,13 +11,12 @@ class Simulation:
 
     def __init__(self):
         fps = 100.0
-        t_final = 5
+        t_final = 5.1
         self.frame_dt = 1 / fps
         self.veh_dt = self.frame_dt / Veh_SIM_NUM
         self.controller_dt = self.frame_dt / Control_SIM_NUM
         self.map_size = 40
         self.frames = int(fps * t_final)
-        self.frames = 40
         self.loop = False
 
 
