@@ -16,11 +16,8 @@ class Simulation:
         self.veh_dt = self.frame_dt / Veh_SIM_NUM
         self.controller_dt = self.frame_dt / Control_SIM_NUM
         self.map_size = 40
-<<<<<<< HEAD
         self.frames = int(fps * t_final)
-=======
         self.frames = 40
->>>>>>> 5ecca32458f922534b861a7cfec6a51d1ab48caa
         self.loop = False
 
 
