@@ -96,12 +96,14 @@ def main():
 
         return outline, fr, rr, fl, rl, rear_axle, CLP_axes
 
-    _ = FuncAnimation(fig, animate, frames=sim.frames, interval=interval, repeat=sim.loop)
-    # anim.save('resources/animation.gif', fps=10)   #Uncomment to save the animation
+    anim = FuncAnimation(fig, animate, frames=sim.frames, interval=interval, repeat=sim.loop)
+    anim.save('resources/animation.gif', fps=10)   #Uncomment to save the animation
     plt.show()
+    plt.close()
 
     plot_results(data_cleaning(car.DataLog))
 
+    plt.close('all')
 
 if __name__ == '__main__':
     main()
