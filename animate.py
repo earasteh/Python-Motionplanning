@@ -11,7 +11,7 @@ class Simulation:
 
     def __init__(self):
         fps = 100.0
-        t_final = 5.1
+        t_final = 4.0
         self.frame_dt = 1 / fps
         self.veh_dt = self.frame_dt / Veh_SIM_NUM
         self.controller_dt = self.frame_dt / Control_SIM_NUM
@@ -77,16 +77,16 @@ def main():
         rear_axle.set_data(car.x, car.y)
 
         try:
-            for i in range(NUM_PATHS):
-                if i is best_index:
-                    CLP_axes[i][0].set_data(paths[i, 0, :], paths[i, 1, :])
-                    CLP_axes[i][0].set_color('green')
+            for j in range(NUM_PATHS):
+                if j is best_index:
+                    CLP_axes[j][0].set_data(paths[j, 0, :], paths[j, 1, :])
+                    CLP_axes[j][0].set_color('green')
                 else:
-                    CLP_axes[i][0].set_data(paths[i, 0, :], paths[i, 1, :])
-                    CLP_axes[i][0].set_color('black')
+                    CLP_axes[j][0].set_data(paths[j, 0, :], paths[j, 1, :])
+                    CLP_axes[j][0].set_color('black')
         except IndexError:
-            for i in range(NUM_PATHS):
-                CLP_axes[i][0].set_data([0, 0, 0], [0, 0, 0])
+            for j in range(NUM_PATHS):
+                CLP_axes[j][0].set_data([0, 0, 0], [0, 0, 0])
 
         # Annotate car's coordinate above car
         annotation.set_text(f'{car.x:.1f}, {car.y:.1f}')
@@ -97,9 +97,8 @@ def main():
         return outline, fr, rr, fl, rl, rear_axle, CLP_axes
 
     anim = FuncAnimation(fig, animate, frames=sim.frames, interval=interval, repeat=sim.loop)
-    anim.save('resources/animation.gif', fps=10)   #Uncomment to save the animation
+    # anim.save('resources/animation.gif', fps=10)   #Uncomment to save the animation
     plt.show()
-    plt.close()
 
     plot_results(data_cleaning(car.DataLog))
 

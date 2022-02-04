@@ -219,7 +219,6 @@ def plot_results(DataLog_pd, figsize_input=None):
     plt.savefig('results/' + fig_name + '.png', dpi=150)
 
     plt.show()
-    plt.close('all')
 
 
 def main():

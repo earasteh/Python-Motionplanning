@@ -21,7 +21,7 @@ Control_SIM_NUM = Veh_SIM_NUM / 10
 NUM_PATHS = 7
 BP_LOOKAHEAD_BASE = 8.0  # m
 BP_LOOKAHEAD_TIME = 2.0  # s
-PATH_OFFSET = 1.5  # m
+PATH_OFFSET = 2  # m
 CIRCLE_OFFSETS = [-1.0, 1.0, 3.0]  # m
 CIRCLE_RADII = [1.5, 1.5, 1.5]  # m
 TIME_GAP = 1.0  # s
@@ -41,7 +41,7 @@ class Car:
 
     def __init__(self, init_x, init_y, init_yaw, px, py, pyaw, dt):
         # Variable to log all the data
-        self.DataLog = np.zeros((Veh_SIM_NUM * 2500, 45))
+        self.DataLog = np.zeros((Veh_SIM_NUM * 4000, 45))
         # Model parameters
         init_vel = 25.0
         self.x = init_x
@@ -68,7 +68,7 @@ class Car:
         self.px = px
         self.py = py
         self.pyaw = pyaw
-        self.k = 10
+        self.k = 100
         self.ksoft = 1.0
         self.kyaw = 0
         self.ksteer = 0
@@ -112,7 +112,7 @@ class Car:
     def drive(self, frame):
         # Motion Planner:
         for i in range(Veh_SIM_NUM):
-            if i % 50 == 0:
+            if i % 100 == 0:
                 paths, best_index, best_path = \
                     self.local_motion_planner.MotionPlanner(self.px, self.py, self.target_vel,
                                                             self.x, self.y, self.yaw, self.v,

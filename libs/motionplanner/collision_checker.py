@@ -185,8 +185,8 @@ class CollisionChecker:
                         if not collision_check_array[j]:
                             # TODO: Choose a good scoring algorithm
                             # --------------------------------------------------
-                            score += 0#self._weight * np.linalg.norm([paths[i][0][-1] - paths[j][0][-1],
-                                      #                              paths[i][1][-1] - paths[j][1][-1]])
+                            score += self._weight * np.linalg.norm([paths[i][0][-1] - paths[j][0][-1],
+                                                                   paths[i][1][-1] - paths[j][1][-1]])
                             # --------------------------------------------------
 
                             pass
