@@ -6,12 +6,11 @@ from libs.utils.env import world  # Importing road definition
 from libs.vehicle_model.drive import Veh_SIM_NUM, Control_SIM_NUM, Car, NUM_PATHS
 from libs.utils.plots import plot_results, data_cleaning
 
-
 class Simulation:
 
     def __init__(self):
         fps = 100.0
-        t_final = 4.0
+        t_final = 1.0
         self.frame_dt = 1 / fps
         self.veh_dt = self.frame_dt / Veh_SIM_NUM
         self.controller_dt = self.frame_dt / Control_SIM_NUM
@@ -102,7 +101,7 @@ def main():
 
     plot_results(data_cleaning(car.DataLog))
 
-    plt.close('all')
+    # plt.close('all')
 
 if __name__ == '__main__':
     main()

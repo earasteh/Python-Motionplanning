@@ -60,10 +60,17 @@ class CollisionChecker:
         # print(len(paths))
         # for i in range(len(paths)):
         #     collision_free = True
-        path = paths
+        path = np.array(paths).reshape(3, len(paths[0]))
         # Iterate over the points in the path.
         collision_free = True
-        for j in range(len(path[0])):
+
+        circle_locations2 = np.zeros((len(self._circle_offsets), 2))
+        # --------------------------------------------------------------
+        circle_offsets2 = np.array(self._circle_offsets).reshape(3, 1)
+        circle_locations2[:, 0] = path[0] + circle_offsets2 @ np.cos(path[2])
+        circle_locations2[:, 1] = path[1] + circle_offsets2 @ np.sin(path[2])
+
+        for j in range(path.shape[1]):
             # Compute the circle locations along this point in the path.
             # These circle represent an approximate collision
             # border for the vehicle, which will be used to check
@@ -85,17 +92,15 @@ class CollisionChecker:
             circle_locations = np.zeros((len(self._circle_offsets), 2))
             # --------------------------------------------------------------
             circle_offsets = np.array(self._circle_offsets)
-            circle_locations[:, 0] = path[0][j] + circle_offsets * np.cos(path[2][j])
-            circle_locations[:, 1] = path[1][j] + circle_offsets * np.sin(path[2][j])
+            circle_locations[:, 0] = path[0, j] + circle_offsets * np.cos(path[2, j])
+            circle_locations[:, 1] = path[1, j] + circle_offsets * np.sin(path[2, j])
             # --------------------------------------------------------------
-
             # Assumes each obstacle is approximated by a collection of
             # points of the form [x, y].
             # Here, we will iterate through the obstacle points, and check
             # if any of the obstacle points lies within any of our circles.
             # If so, then the path will collide with an obstacle and
             # the collision_free flag should be set to false for this flag
-
             for obstacle_points in obstacles:
                 obstacle_points = [obstacle_points]
                 collision_dists = \

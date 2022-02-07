@@ -1,9 +1,7 @@
 import os
 import numpy as np
-from libs.vehicle_model.vehicle_model import VehicleModel
-from libs.vehicle_model.vehicle_model import VehicleParameters
-from libs.controllers.stanley_controller import StanleyController
-from libs.controllers.stanley_controller import LongitudinalController
+from libs.vehicle_model.vehicle_model import VehicleModel, VehicleParameters
+from libs.controllers.stanley_controller import StanleyController, LongitudinalController
 from libs.motionplanner.local_planner import LocalPlanner
 from libs.utils.env import world
 

@@ -8,6 +8,7 @@ import itertools
 
 import numpy as np
 import copy
+import time
 from libs.motionplanner import path_optimizer
 from libs.motionplanner import collision_checker
 from libs.motionplanner import velocity_planner
@@ -366,12 +367,15 @@ class LocalPlanner:
         goal_state_set = self.get_goal_state_set(goal_index, goal_state, waypoints, ego_state)
         paths, path_validity = self.plan_paths(goal_state_set)
         paths = transform_paths(paths, ego_state)
+
         try:
             pool = ThreadPool(processes=len(paths))
             collision_check_array = pool.starmap(self._collision_checker.collision_check,
                                               zip(paths, itertools.repeat(obstacle)))
         except ValueError:
             collision_check_array = [True] * 7
+
+
         # if not any(collision_check_array):
         #     raise Exception("All paths are colliding with an object!!")
 
@@ -419,6 +423,7 @@ class LocalPlanner:
             LateralTrackerObj.update_waypoints(wp_interp) # new points to follow
 
         return paths, best_index, best_path
+
 
 
 def transform_paths(paths, ego_state):
