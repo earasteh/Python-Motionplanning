@@ -5,3 +5,6 @@ circle_wp_gen.py
 stuff.py
 results
 resources
+/c_generated_code
+/.idea
+.idea

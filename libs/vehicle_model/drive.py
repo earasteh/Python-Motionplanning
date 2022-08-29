@@ -6,6 +6,7 @@ from libs.controllers.stanley_controller import StanleyController
 from libs.controllers.stanley_controller import LongitudinalController
 from libs.motionplanner.local_planner import LocalPlanner
 from libs.utils.env import world
+from libs.controllers.mpc import MPC
 
 ###
 # Frame rate = 0.1
@@ -63,6 +64,7 @@ class Car:
         # self.state = [init_vel, 0, 0, init_yaw, init_x, init_y] (these were for the bicycle model states)
         self.state = [init_vel, 0, 0, init_vel / p.rw, init_vel / p.rw, init_vel / p.rw, init_vel / p.rw, init_yaw,
                       init_x, init_y]
+        self.state_dot = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
         # Lateral Tracker parameters
         self.px = px
@@ -108,6 +110,9 @@ class Car:
                                                  self.wheelbase)
         self.kbm = VehicleModel(self.wheelbase, self.max_steer, self.dt)
         self.long_tracker = LongitudinalController(self.k_v, self.k_i, self.k_d)
+        self.MPC = MPC(30, 0.3, p, self.px, self.py, self.pyaw, np.array([init_x, init_y, init_yaw,
+                                                                          init_vel, 0, 0, 0, -1 * np.pi / 180]))
+        self.uk_prev_step = np.array([0, -1 * np.pi / 180])
 
     def drive(self, frame):
         # Motion Planner:
@@ -131,20 +136,30 @@ class Car:
                 self.total_vel_error, self.torque_vec = \
                     self.long_tracker.long_control(self.target_vel, self.v, self.prev_vel,
                                                    self.total_vel_error, self.dt)
-                self.prev_vel = self.v
+                u, crosstrack, x0, xN, status = self.MPC.solve_mpc([self.x, self.y, self.yaw,
+                                                                    self.v, self.state_dot[1],
+                                                                    self.state_dot[7]],
+                                                                    self.uk_prev_step,
+                                                                    self.px, self.py, self.pyaw)
+                self.uk_prev_step = u
+                tau, delta = u
+                self.crosstrack_error = crosstrack
+                self.delta = delta
+                # self.torque_vec = [0*tau] * 4
 
-                # Filter the delta output
-                self.x_del.append((1 - 1e-5 / (2*0.001)) * self.x_del[-1] + 1e-5 / (2*0.001) * self.delta)
-                self.delta = self.x_del[-1]
+                # self.prev_vel = self.v
+                # # Filter the delta output
+                # self.x_del.append((1 - 1e-5 / (2*0.001)) * self.x_del[-1] + 1e-5 / (2*0.001) * self.delta)
+                # self.delta = self.x_del[-1]
 
             ## Vehicle model
-            self.state, self.x, self.y, self.yaw, self.v, state_dot, outputs, self.ax_prev, self.ay_prev = \
+            self.state, self.x, self.y, self.yaw, self.v, self.state_dot, outputs, self.ax_prev, self.ay_prev = \
                 self.kbm.planar_model_RK4(self.state, self.torque_vec, [1.0, 1.0, 1.0, 1.0],
                                           [self.delta, self.delta, 0, 0], p, self.ax_prev, self.ay_prev)
 
             self.DataLog[frame * Veh_SIM_NUM + i, 0] = (frame * Veh_SIM_NUM + i) * self.kbm.dt
             self.DataLog[frame * Veh_SIM_NUM + i, 1:11] = self.state
-            self.DataLog[frame * Veh_SIM_NUM + i, 11:21] = state_dot
+            self.DataLog[frame * Veh_SIM_NUM + i, 11:21] = self.state_dot
             self.DataLog[frame * Veh_SIM_NUM + i, 21] = self.delta
             self.DataLog[frame * Veh_SIM_NUM + i, 22:26] = self.torque_vec
             self.DataLog[frame * Veh_SIM_NUM + i, 26:44] = outputs
